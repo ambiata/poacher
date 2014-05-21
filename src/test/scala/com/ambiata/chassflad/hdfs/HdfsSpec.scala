@@ -1,4 +1,4 @@
-package com.ambiata.ivory.alien.hdfs
+package com.ambiata.chassflad.hdfs
 
 import org.specs2.Specification
 import org.apache.hadoop.fs.Path

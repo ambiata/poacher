@@ -1,4 +1,4 @@
-package com.ambiata.ivory.alien
+package com.ambiata.chassflad
 
 import com.amazonaws.services.s3.AmazonS3Client
 

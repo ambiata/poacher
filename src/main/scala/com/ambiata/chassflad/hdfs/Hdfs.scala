@@ -1,4 +1,4 @@
-package com.ambiata.ivory.alien.hdfs
+package com.ambiata.chassflad.hdfs
 
 import scalaz._, Scalaz._, \&/._, effect._, Effect._
 import org.apache.hadoop.conf.Configuration

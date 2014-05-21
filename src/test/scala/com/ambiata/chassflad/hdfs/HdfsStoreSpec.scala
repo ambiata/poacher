@@ -1,4 +1,4 @@
-package com.ambiata.ivory.alien.hdfs
+package com.ambiata.chassflad.hdfs
 
 import scala.io.Codec
 import scalaz.{Store => _, _}, Scalaz._, \&/._, effect.IO

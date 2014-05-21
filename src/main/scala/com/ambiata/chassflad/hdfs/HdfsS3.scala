@@ -1,4 +1,4 @@
-package com.ambiata.ivory.alien.hdfs
+package com.ambiata.chassflad.hdfs
 
 import com.amazonaws.services.s3.model._
 import com.ambiata.saws.s3.S3

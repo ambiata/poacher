@@ -1,4 +1,4 @@
-package com.ambiata.ivory.alien.hdfs
+package com.ambiata.chassflad.hdfs
 
 import com.ambiata.mundane.control._
 import com.ambiata.mundane.io._
