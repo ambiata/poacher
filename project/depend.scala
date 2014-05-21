@@ -12,7 +12,7 @@ object depend {
                       "org.specs2"           %% "specs2-junit",
                       "org.specs2"           %% "specs2-html",
                       "org.specs2"           %% "specs2-matcher-extra",
-                      "org.specs2"           %% "specs2-scalacheck").map(_ % "2.3.11")
+                      "org.specs2"           %% "specs2-scalacheck").map(_ % "2.3.10")
   val commonsio = Seq("commons-io"           %  "commons-io"      % "2.4")
   val thrift    = Seq("org.apache.thrift"    %  "libthrift"       % "0.9.1")
   val saws      = Seq("com.ambiata"          %% "saws"            % "1.2.1-20140415232043-cc305d0",
