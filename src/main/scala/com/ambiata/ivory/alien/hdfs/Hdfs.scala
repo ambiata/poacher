@@ -7,6 +7,7 @@ import java.io._
 
 import com.ambiata.mundane.control._
 import com.ambiata.mundane.io.Streams
+import com.nicta.scoobi.impl.util.Compatibility
 
 case class Hdfs[+A](action: ActionT[IO, Unit, Configuration, A]) {
   def run(conf: Configuration): ResultTIO[A] =
@@ -66,7 +67,7 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
     filesystem.map(fs => fs.exists(p))
 
   def isDirectory(p: Path): Hdfs[Boolean] =
-    filesystem.map(fs => fs.isDirectory(p))
+    filesystem.map(fs => Compatibility.isDirectory(fs.getFileStatus(p)))
 
   def mustexist(p: Path): Hdfs[Unit] =
     exists(p).flatMap(e => if(e) Hdfs.ok(()) else Hdfs.fail(s"$p doesn't exist!"))
