@@ -67,7 +67,10 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
     filesystem.map(fs => fs.exists(p))
 
   def isDirectory(p: Path): Hdfs[Boolean] =
-    filesystem.map(fs => Compatibility.isDirectory(fs.getFileStatus(p)))
+    filesystem.map { fs =>
+      try Compatibility.isDirectory(fs.getFileStatus(p))
+      catch { case _: FileNotFoundException => false }
+    }
 
   def mustexist(p: Path): Hdfs[Unit] =
     exists(p).flatMap(e => if(e) Hdfs.ok(()) else Hdfs.fail(s"$p doesn't exist!"))
