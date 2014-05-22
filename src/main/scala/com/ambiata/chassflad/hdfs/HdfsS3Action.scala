@@ -33,6 +33,9 @@ object HdfsS3Action extends ActionTSupport[IO, Vector[AwsLog], (Configuration, A
   def value[A](a: A) =
     HdfsAwsAction(super.ok(a))
 
+  def fail(message: String) =
+    HdfsAwsAction(super.fail(message))
+
   def safe[A](a: =>A) =
     HdfsAwsAction(super.safe(a))
 
@@ -47,6 +50,9 @@ object HdfsS3Action extends ActionTSupport[IO, Vector[AwsLog], (Configuration, A
 
   def fromResultT[A](result: ResultT[IO, A]): HdfsS3Action[A] =
     HdfsAwsAction(ActionT.fromIOResult[IO, Vector[AwsLog], Config, A](result.run))
+
+  def fromResult[A](result: Result[A]): HdfsS3Action[A] =
+    fromResultT(ResultT.result(result))
 
   implicit def HdfsS3ActionMonad: Monad[HdfsS3Action] = HdfsAwsActionMonad[AmazonS3Client]
 
