@@ -53,31 +53,31 @@ object ScoobiS3Action extends ActionTSupport[IO, Vector[AwsLog], (ScoobiConfigur
   def fail[A](e: String) =
     ScoobiAwsAction(super.fail(e))
 
-  def scoobiConfiguration: ScoobiAwsAction[ScoobiConfiguration, AmazonS3Client] =
-    fromScoobiAction(ScoobiAction.scoobiConfiguration)
+  def scoobiConfiguration: ScoobiS3Action[ScoobiConfiguration] =
+    reader((c: Config) => c._1)
 
-  def client[A](f: AmazonS3Client => A): ScoobiAwsAction[A, AmazonS3Client] =
-    reader((c: Config) => f(c._2))
+  def client: ScoobiS3Action[AmazonS3Client] =
+    reader((c: Config) => c._2)
+
+  def configuration: ScoobiS3Action[Configuration] =
+    fromHdfs(Hdfs.configuration)
 
   def reader[A](f: Config => A): ScoobiAwsAction[A, AmazonS3Client] =
     ScoobiAwsAction(ActionT((c: Config) => ResultT.safe[({ type l[+a] = WriterT[IO, Log, a] })#l, A](f(c))))
 
-  def configuration: ScoobiAwsAction[Configuration, AmazonS3Client] =
-    fromHdfs(Hdfs.configuration)
-
-  def fromScoobiAction[A](action: ScoobiAction[A]): ScoobiAwsAction[A, AmazonS3Client] =
+  def fromScoobiAction[A](action: ScoobiAction[A]): ScoobiS3Action[A] =
     ScoobiAwsAction(ActionT((c: Config) => ActionT.fromResultT[IO, Vector[AwsLog], Config, A](action.run(c._1)).runT(c)))
 
   def fromResultTIO[A](action: ResultT[IO, A]): ScoobiS3Action[A] =
     fromScoobiAction(ScoobiAction.fromResultTIO(action))
 
-  def fromS3Action[A](action: S3Action[A]): ScoobiAwsAction[A, AmazonS3Client] =
+  def fromS3Action[A](action: S3Action[A]): ScoobiS3Action[A] =
     ScoobiAwsAction(action.runT.contramap((_: Config)._2))
 
-  def fromHdfs[A](hdfs: Hdfs[A]): ScoobiAwsAction[A, AmazonS3Client] =
+  def fromHdfs[A](hdfs: Hdfs[A]): ScoobiS3Action[A] =
     fromHdfsS3(HdfsS3Action.fromHdfs(hdfs))
 
-  def fromHdfsS3[A](hdfs: HdfsS3Action[A]): ScoobiAwsAction[A, AmazonS3Client] =
+  def fromHdfsS3[A](hdfs: HdfsS3Action[A]): ScoobiS3Action[A] =
     ScoobiAwsAction(ActionT((c: Config) => ActionT.fromIOResult[IO, Vector[AwsLog], Config, A](hdfs.action.run((c._1.configuration, c._2)).map(_._2)).runT(c)))
 
   implicit def ScoobiS3ActionMonad: Monad[ScoobiS3Action] = ScoobiAwsAction.ScoobiAwsActionMonad[AmazonS3Client]
