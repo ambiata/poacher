@@ -56,8 +56,11 @@ object ScoobiS3Action extends ActionTSupport[IO, Vector[AwsLog], (ScoobiConfigur
   def scoobiConfiguration: ScoobiAwsAction[ScoobiConfiguration, AmazonS3Client] =
     fromScoobiAction(ScoobiAction.scoobiConfiguration)
 
-  def reader[A](f: ScoobiConfiguration => A): ScoobiAwsAction[A, AmazonS3Client] =
-    scoobiConfiguration.map(f)
+  def client[A](f: AmazonS3Client => A): ScoobiAwsAction[A, AmazonS3Client] =
+    reader((c: Config) => f(c._2))
+
+  def reader[A](f: Config => A): ScoobiAwsAction[A, AmazonS3Client] =
+    ScoobiAwsAction(ActionT((c: Config) => ResultT.safe[({ type l[+a] = WriterT[IO, Log, a] })#l, A](f(c))))
 
   def configuration: ScoobiAwsAction[Configuration, AmazonS3Client] =
     fromHdfs(Hdfs.configuration)
