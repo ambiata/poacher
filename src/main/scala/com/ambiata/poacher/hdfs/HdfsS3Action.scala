@@ -30,13 +30,13 @@ object HdfsS3Action extends ActionTSupport[IO, Vector[AwsLog], (Configuration, A
 
   type Config = (Configuration, AmazonS3Client)
 
-  def value[A](a: A) =
+  def value[A](a: A): HdfsS3Action[A] =
     HdfsAwsAction(super.ok(a))
 
-  def fail(message: String) =
-    HdfsAwsAction(super.fail(message))
+  def fail[A](message: String): HdfsS3Action[A] =
+    HdfsAwsAction(super.fail[A](message))
 
-  def safe[A](a: =>A) =
+  def safe[A](a: =>A): HdfsS3Action[A] =
     HdfsAwsAction(super.safe(a))
 
   def configuration: HdfsS3Action[Configuration] =
