@@ -6,7 +6,7 @@ import org.apache.hadoop.fs.{FileSystem, FileUtil, Path}
 import java.io._
 
 import com.ambiata.mundane.control._
-import com.ambiata.mundane.io.Streams
+import com.ambiata.mundane.io.{FilePath, Streams}
 import com.nicta.scoobi.impl.util.Compatibility
 
 case class Hdfs[+A](action: ActionT[IO, Unit, Configuration, A]) {
@@ -63,8 +63,14 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
   def configuration: Hdfs[Configuration] =
     Hdfs(reader(identity))
 
+  def exists(p: FilePath): Hdfs[Boolean] =
+    exists(new Path(p.path))
+
   def exists(p: Path): Hdfs[Boolean] =
     filesystem.map(fs => fs.exists(p))
+
+  def isDirectory(p: FilePath): Hdfs[Boolean] =
+    isDirectory(new Path(p.path))
 
   def isDirectory(p: Path): Hdfs[Boolean] =
     filesystem.map { fs =>
@@ -72,13 +78,28 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
       catch { case _: FileNotFoundException => false }
     }
 
+  def mustexist(p: FilePath): Hdfs[Unit] =
+    mustexist(new Path(p.path))
+
   def mustexist(p: Path): Hdfs[Unit] =
     exists(p).flatMap(e => if(e) Hdfs.ok(()) else Hdfs.fail(s"$p doesn't exist!"))
+
+  def globPaths(p: FilePath): Hdfs[List[Path]] =
+    globPaths(new Path(p.path))
+
+  def globPathsWithGlob(p: FilePath, glob: String): Hdfs[List[Path]] =
+    globPaths(new Path(p.path), glob)
 
   def globPaths(p: Path, glob: String = "*"): Hdfs[List[Path]] =
     filesystem.map(fs =>
       if(fs.isFile(p)) List(p) else fs.globStatus(new Path(p, glob)).toList.map(_.getPath)
     )
+
+  def globPathsRecursively(p: FilePath): Hdfs[List[Path]] =
+    globPaths(new Path(p.path))
+
+  def globPathsRecursivelyWithGlob(p: FilePath, glob: String): Hdfs[List[Path]] =
+    globPathsRecursively(new Path(p.path), glob)
 
   def globPathsRecursively(p: Path, glob: String = "*"): Hdfs[List[Path]] = {
     def getPaths(path: Path): FileSystem => List[Path] = { fs: FileSystem =>
@@ -91,6 +112,18 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
     filesystem.map(getPaths(p))
   }
 
+  def globFiles(p: FilePath): Hdfs[List[Path]] =
+    globFiles(new Path(p.path))
+
+  def globFilesWithGlob(p: FilePath, glob: String): Hdfs[List[Path]] =
+    globFiles(new Path(p.path), glob)
+
+  def globFilesRecursively(p: FilePath): Hdfs[List[Path]] =
+    globFiles(new Path(p.path))
+
+  def globFilesRecursivelyWithGlob(p: FilePath, glob: String): Hdfs[List[Path]] =
+    globFilesRecursively(new Path(p.path), glob)
+
   def globFiles(p: Path, glob: String = "*"): Hdfs[List[Path]] = for {
     fs    <- filesystem
     files <- globPaths(p, glob)
@@ -100,6 +133,12 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
     fs    <- filesystem
     files <- globPathsRecursively(p, glob)
   } yield files.filter(fs.isFile)
+
+  def readWith[A](p: FilePath, f: InputStream => ResultT[IO, A]): Hdfs[A] =
+    readWith(new Path(p.path), f)
+
+  def readWithGlob[A](p: FilePath, f: InputStream => ResultT[IO, A], glob: String): Hdfs[A] =
+    readWith(new Path(p.path), f, glob)
 
   def readWith[A](p: Path, f: InputStream => ResultT[IO, A], glob: String = "*"): Hdfs[A] = for {
     _     <- mustexist(p)
@@ -116,14 +155,29 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
              })
   } yield a
 
+  def readContentAsString(p: FilePath): Hdfs[String] =
+    readContentAsString(new Path(p.path))
+
   def readContentAsString(p: Path): Hdfs[String] =
     readWith(p, is =>  Streams.read(is))
+
+  def readLines(p: FilePath): Hdfs[Iterator[String]] =
+    readContentAsString(new Path(p.path))
 
   def readLines(p: Path): Hdfs[Iterator[String]] =
     readContentAsString(p).map(_.lines)
 
+  def globLines(p: FilePath): Hdfs[Iterator[String]] =
+    globLines(new Path(p.path))
+
+  def globLinesWithGlob(p: FilePath, glob: String): Hdfs[Iterator[String]] =
+    globLines(new Path(p.path))
+
   def globLines(p: Path, glob: String = "*"): Hdfs[Iterator[String]] =
     Hdfs.globFiles(p, glob).flatMap(_.map(Hdfs.readLines).sequenceU.map(_.toIterator.flatten))
+
+  def writeWith[A](p: FilePath, f: OutputStream => ResultT[IO, A]): Hdfs[A] =
+    writeWith(new Path(p.path), f)
 
   def writeWith[A](p: Path, f: OutputStream => ResultT[IO, A]): Hdfs[A] = for {
     _ <- mustexist(p) ||| mkdir(p.getParent)
@@ -133,6 +187,9 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
       }))
   } yield a
 
+  def cp(src: FilePath, dest: FilePath, overwrite: Boolean): Hdfs[Unit] =
+    cp(new Path(src.path), new Path(dest.path), overwrite)
+
   def cp(src: Path, dest: Path, overwrite: Boolean): Hdfs[Unit] = for {
     fs   <- filesystem
     conf <- configuration
@@ -140,11 +197,20 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
     _    <- if(!res && overwrite) fail(s"Could not copy $src to $dest") else ok(())
   } yield ()
 
+  def mkdir(p: FilePath): Hdfs[Boolean] =
+    mkdir(new Path(p.path))
+
   def mkdir(p: Path): Hdfs[Boolean] =
     filesystem.map(fs => fs.mkdirs(p))
 
+  def delete(p: FilePath): Hdfs[Unit] =
+    delete(new Path(p.path))
+
   def delete(p: Path): Hdfs[Unit] =
     filesystem.map(fs => fs.delete(p, false))
+
+  def deleteAll(p: FilePath): Hdfs[Unit] =
+    deleteAll(new Path(p.path))
 
   def deleteAll(p: Path): Hdfs[Unit] =
     filesystem.map(fs => fs.delete(p, true))
