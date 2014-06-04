@@ -1,4 +1,4 @@
-package com.ambiata.chassflad
+package com.ambiata.poacher
 package scoobi
 
 import com.ambiata.mundane.control._

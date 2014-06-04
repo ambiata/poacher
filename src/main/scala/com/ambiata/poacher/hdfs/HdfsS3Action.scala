@@ -1,4 +1,4 @@
-package com.ambiata.chassflad.hdfs
+package com.ambiata.poacher.hdfs
 
 import com.ambiata.saws.core._
 import scalaz.Monad

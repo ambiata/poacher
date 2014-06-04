@@ -1,6 +1,6 @@
-package com.ambiata.chassflad
+package com.ambiata.poacher
 
-import com.ambiata.chassflad.scoobi.ScoobiAwsAction
+import com.ambiata.poacher.scoobi.ScoobiAwsAction
 import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.elasticmapreduce.AmazonElasticMapReduceClient
 

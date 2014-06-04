@@ -8,12 +8,12 @@ import com.ambiata.promulgate.project.ProjectPlugin._
 object build extends Build {
   type Settings = Def.Setting[_]
 
-  lazy val chassflad = Project(
-    id = "chassflad"
+  lazy val poacher = Project(
+    id = "poacher"
   , base = file(".")
   , settings = 
     standardSettings ++ 
-    promulgate.library(s"com.ambiata.chassflad", "ambiata-oss") ++
+    promulgate.library(s"com.ambiata.poacher", "ambiata-oss") ++
     Seq[Settings](libraryDependencies ++= depend.scalaz ++ depend.mundane ++ depend.saws ++ depend.scoobi(version.value) ++ depend.specs2)
   )
 
@@ -26,7 +26,7 @@ object build extends Build {
                               )
 
   lazy val projectSettings: Seq[Settings] = Seq(
-    name := "chassflad"
+    name := "poacher"
   , version in ThisBuild := s"""1.0.0-${Option(System.getenv("HADOOP_VERSION")).getOrElse("cdh5")}"""
   , organization := "com.ambiata"
   , scalaVersion := "2.10.4"

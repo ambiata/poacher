@@ -1,4 +1,4 @@
-package com.ambiata.chassflad
+package com.ambiata.poacher
 
 import com.amazonaws.services.s3.AmazonS3Client
 

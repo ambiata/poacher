@@ -1,4 +1,4 @@
-package com.ambiata.chassflad.hdfs
+package com.ambiata.poacher.hdfs
 
 import scalaz._, Scalaz._, \&/._, effect._, Effect._
 import org.apache.hadoop.conf.Configuration
@@ -134,10 +134,10 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
     files <- globPathsRecursively(p, glob)
   } yield files.filter(fs.isFile)
 
-  def readWith[A](p: FilePath, f: InputStream => ResultT[IO, A]): Hdfs[A] =
+  def readFromStream[A](p: FilePath, f: InputStream => ResultT[IO, A]): Hdfs[A] =
     readWith(new Path(p.path), f)
 
-  def readWithGlob[A](p: FilePath, f: InputStream => ResultT[IO, A], glob: String): Hdfs[A] =
+  def readFromStreamWithGlob[A](p: FilePath, f: InputStream => ResultT[IO, A], glob: String): Hdfs[A] =
     readWith(new Path(p.path), f, glob)
 
   def readWith[A](p: Path, f: InputStream => ResultT[IO, A], glob: String = "*"): Hdfs[A] = for {
@@ -159,10 +159,10 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
     readContentAsString(new Path(p.path))
 
   def readContentAsString(p: Path): Hdfs[String] =
-    readWith(p, is =>  Streams.read(is))
+    readWith(p, Streams.read(_: InputStream))
 
   def readLines(p: FilePath): Hdfs[Iterator[String]] =
-    readContentAsString(new Path(p.path))
+    readLines(new Path(p.path))
 
   def readLines(p: Path): Hdfs[Iterator[String]] =
     readContentAsString(p).map(_.lines)
@@ -176,7 +176,7 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
   def globLines(p: Path, glob: String = "*"): Hdfs[Iterator[String]] =
     Hdfs.globFiles(p, glob).flatMap(_.map(Hdfs.readLines).sequenceU.map(_.toIterator.flatten))
 
-  def writeWith[A](p: FilePath, f: OutputStream => ResultT[IO, A]): Hdfs[A] =
+  def writeToStream[A](p: FilePath, f: OutputStream => ResultT[IO, A]): Hdfs[A] =
     writeWith(new Path(p.path), f)
 
   def writeWith[A](p: Path, f: OutputStream => ResultT[IO, A]): Hdfs[A] = for {

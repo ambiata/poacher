@@ -1,4 +1,4 @@
-package com.ambiata.chassflad.hdfs
+package com.ambiata.poacher.hdfs
 
 import org.specs2.Specification
 import org.apache.hadoop.fs.Path
