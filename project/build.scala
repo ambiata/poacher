@@ -14,7 +14,7 @@ object build extends Build {
   , settings = 
     standardSettings ++ 
     promulgate.library(s"com.ambiata.poacher", "ambiata-oss") ++
-    Seq[Settings](libraryDependencies ++= depend.scalaz ++ depend.mundane ++ depend.saws ++ depend.scoobi(version.value) ++ depend.specs2)
+    Seq[Settings](libraryDependencies ++= depend.scalaz ++ depend.mundane ++ depend.scoobi(version.value) ++ depend.specs2)
   )
 
   lazy val standardSettings = Defaults.defaultSettings ++

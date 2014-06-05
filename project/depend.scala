@@ -15,8 +15,6 @@ object depend {
                       "org.specs2"           %% "specs2-scalacheck").map(_ % "2.3.10")
   val commonsio = Seq("commons-io"           %  "commons-io"      % "2.4")
   val thrift    = Seq("org.apache.thrift"    %  "libthrift"       % "0.9.1")
-  val saws      = Seq("com.ambiata"          %% "saws"            % "1.2.1-20140604032927-def9ad2",
-                      "net.java.dev.jets3t"  %  "jets3t"          % "0.9.0" )
   val mundane   = Seq("com.ambiata"          %% "mundane"         % "1.2.1-20140505014353-a175c40")
 
   def scoobi(version: String) = {

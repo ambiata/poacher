@@ -7,7 +7,6 @@ import org.specs2._, org.specs2.matcher._
 import org.scalacheck.Arbitrary, Arbitrary._
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
-import com.ambiata.saws.core._
 import com.ambiata.mundane.control._
 import com.ambiata.mundane.io._
 import com.ambiata.mundane.testing._, ResultTIOMatcher._
