@@ -96,7 +96,7 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
     )
 
   def globPathsRecursively(p: FilePath): Hdfs[List[Path]] =
-    globPaths(new Path(p.path))
+    globPathsRecursively(new Path(p.path))
 
   def globPathsRecursivelyWithGlob(p: FilePath, glob: String): Hdfs[List[Path]] =
     globPathsRecursively(new Path(p.path), glob)
