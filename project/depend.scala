@@ -18,18 +18,27 @@ object depend {
   val mundane   = Seq("com.ambiata"          %% "mundane-control",
                       "com.ambiata"          %% "mundane-io"     ,
                       "com.ambiata"          %% "mundane-store"  ,
-                      "com.ambiata"          %% "mundane-testing").map(_ % "1.2.1-20140706115053-2c11cc2")
+                      "com.ambiata"          %% "mundane-testing").map(_ % "1.2.1-20140724234929-b82bed6")
 
   def scoobi(version: String) = {
-    val scoobiVersion =                                               
-      if (version.contains("cdh3"))      "0.9.0-cdh3-20140707015433-646465a"
-      else if (version.contains("cdh4")) "0.9.0-cdh4-20140707015150-646465a"
-      else if (version.contains("cdh5")) "0.9.0-cdh5-20140707014808-646465a"
-      else                               "0.9.0-cdh5-20140707014808-646465a"
-
-
-    Seq("com.nicta" %% "scoobi" % scoobiVersion)
+    val jars =
+      if (version.contains("cdh4"))      Seq("com.nicta" %% "scoobi"                    % "0.9.0-cdh4-20140722073640-fe6f152",
+                                             "com.nicta" %% "scoobi-compatibility-cdh4" % "1.0.2")
+      else if (version.contains("cdh5")) Seq("com.nicta" %% "scoobi"                    % "0.9.0-cdh5-20140722073131-fe6f152",
+                                             "com.nicta" %% "scoobi-compatibility-cdh5" % "1.0.2")
+      else                               sys.error(s"unsupported scoobi version, can not build for $version")
+    jars.map(_ intransitive())
   }
+
+  def hadoop(version: String, hadoopVersion: String = "2.2.0") =
+    if (version.contains("cdh4"))      Seq("org.apache.hadoop" % "hadoop-client" % "2.0.0-mr1-cdh4.6.0" % "provided" exclude("asm", "asm"),
+                                           "org.apache.hadoop" % "hadoop-core"   % "2.0.0-mr1-cdh4.6.0" % "provided",
+                                           "org.apache.avro"   % "avro-mapred"   % "1.7.4"              % "provided" classifier "hadoop2")
+
+    else if (version.contains("cdh5")) Seq("org.apache.hadoop" % "hadoop-client" % "2.2.0-cdh5.0.0-beta-2" % "provided" exclude("asm", "asm"),
+                                           "org.apache.avro"   % "avro-mapred"   % "1.7.5-cdh5.0.0-beta-2" % "provided")
+
+    else sys.error(s"unsupported hadoop version, can not build for $version")
 
   val resolvers = Seq(
       Resolver.sonatypeRepo("releases"),

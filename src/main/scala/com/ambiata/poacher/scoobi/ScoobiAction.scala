@@ -1,7 +1,10 @@
 package com.ambiata.poacher
 package scoobi
 
+import com.ambiata.mundane.control.ActionT
 import com.ambiata.mundane.control._
+import com.nicta.scoobi.core.ScoobiConfiguration
+import com.nicta.scoobi.core.ScoobiConfiguration
 import scalaz.effect.IO
 import scalaz._, Scalaz._
 import \&/._
@@ -31,6 +34,12 @@ case class ScoobiAction[+A](action: ActionT[IO, Unit, ScoobiConfiguration, A]) {
 
   def flatten[B](implicit ev: A <:< ScoobiAction[B]): ScoobiAction[B] =
     flatMap(a => ev(a))
+
+  def unless(condition: Boolean): ScoobiAction[Unit] =
+    ScoobiAction.unless(condition)(this)
+
+  def log(f: A => String) =
+    flatMap((a: A) => ScoobiAction.log(f(a)))
 }
 
 
@@ -77,6 +86,12 @@ object ScoobiAction extends ActionTSupport[IO, Unit, ScoobiConfiguration] {
     sc <- ScoobiAction.scoobiConfiguration
     a  <- ScoobiAction.safe(f(sc))
   } yield a
+
+  def log(message: String) =
+    fromIO(IO(println(message)))
+
+  def unless[A](condition: Boolean)(action: ScoobiAction[A]): ScoobiAction[Unit] =
+    if (!condition) action.map(_ => ()) else ScoobiAction.ok(())
 
   implicit def ScoobiActionMonad: Monad[ScoobiAction] = new Monad[ScoobiAction] {
     def point[A](v: => A) = ok(v)
