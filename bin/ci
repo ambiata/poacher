@@ -4,9 +4,9 @@ JVM_OPTS="-Dfile.encoding=UTF8 -XX:MaxPermSize=512m -Xms512m -Xmx2g -XX:+CMSClas
 
 HADOOP_VERSION=cdh5; export HADOOP_VERSION
 
-./sbt -Dsbt.log.noformat=true "; clean; update; test-only -- console junitxml html; publish; echo-version"
+./sbt -Dsbt.log.noformat=true "; clean; update; test-only -- console junitxml html; +publish; echo-version"
 
 
 HADOOP_VERSION=cdh4; export HADOOP_VERSION
 
-./sbt -Dsbt.log.noformat=true "; clean; update; test-only -- console junitxml html; publish; echo-version"
+./sbt -Dsbt.log.noformat=true "; clean; update; test-only -- console junitxml html; +publish; echo-version"
