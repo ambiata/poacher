@@ -12,7 +12,7 @@ import com.nicta.scoobi.core.ScoobiConfiguration
 import org.apache.hadoop.fs.{Path, FileSystem}
 import hdfs._
 
-case class ScoobiAction[+A](action: ActionT[IO, Unit, ScoobiConfiguration, A]) {
+case class ScoobiAction[A](action: ActionT[IO, Unit, ScoobiConfiguration, A]) {
 
   def run(conf: ScoobiConfiguration): ResultTIO[A] =
     action.executeT(conf)
@@ -29,7 +29,7 @@ case class ScoobiAction[+A](action: ActionT[IO, Unit, ScoobiConfiguration, A]) {
   def mapErrorString(f: String => String): ScoobiAction[A] =
     ScoobiAction(action.mapError(_.leftMap(f)))
 
-  def |||[AA >: A](other: ScoobiAction[AA]): ScoobiAction[AA] =
+  def |||(other: ScoobiAction[A]): ScoobiAction[A] =
     ScoobiAction(action ||| other.action)
 
   def flatten[B](implicit ev: A <:< ScoobiAction[B]): ScoobiAction[B] =

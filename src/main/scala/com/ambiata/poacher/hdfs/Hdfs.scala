@@ -11,7 +11,7 @@ import com.ambiata.mundane.control._
 import com.ambiata.mundane.io.{BytesQuantity, FilePath, Streams, MemoryConversions}
 import MemoryConversions._
 
-case class Hdfs[+A](action: ActionT[IO, Unit, Configuration, A]) {
+case class Hdfs[A](action: ActionT[IO, Unit, Configuration, A]) {
   def run(conf: Configuration): ResultTIO[A] =
     action.executeT(conf)
 
@@ -27,7 +27,7 @@ case class Hdfs[+A](action: ActionT[IO, Unit, Configuration, A]) {
   def mapErrorString(f: String => String): Hdfs[A] =
     Hdfs(action.mapError(_.leftMap(f)))
 
-  def |||[AA >: A](other: Hdfs[AA]): Hdfs[AA] =
+  def |||(other: Hdfs[A]): Hdfs[A] =
     Hdfs(action ||| other.action)
 
   def filterHidden(implicit ev: A <:< List[Path]): Hdfs[List[Path]] =
@@ -172,7 +172,7 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
     Hdfs.globFiles(p, glob).flatMap(_.map(Hdfs.readLines).sequenceU.map(_.toIterator.flatten))
 
   def writeWith[A](p: Path, f: OutputStream => ResultT[IO, A]): Hdfs[A] = for {
-    _ <- mustexist(p) ||| mkdir(p.getParent)
+    _ <- mustexist(p) ||| mkdir(p.getParent).void
     a <- filesystem.flatMap(fs =>
       Hdfs.fromResultTIO(ResultT.using(ResultT.safe[IO, OutputStream](fs.create(p))) { out =>
         f(out)
