@@ -12,51 +12,50 @@ import org.apache.hadoop.fs.{FileSystem, Path}
 import scala.io.Codec
 import scalaz.{Store => _, _}, Scalaz._, scalaz.stream._, scalaz.concurrent._, effect.IO, effect.Effect._, \&/._
 import scodec.bits.ByteVector
+import FilePath._
 
-case class HdfsStore(conf: Configuration, base: FilePath) extends Store[ResultTIO] with ReadOnlyStore[ResultTIO] {
+case class HdfsStore(conf: Configuration, base: DirPath) extends Store[ResultTIO] with ReadOnlyStore[ResultTIO] {
   def readOnly: ReadOnlyStore[ResultTIO] =
     this
 
   def basePath: Path =
     new Path(base.path)
 
-  def normalize(key: Path): String = {
-    val fs = FileSystem.get(conf)
-    fs.makeQualified(key).toString.replace(fs.makeQualified(basePath).toString + "/", "")
-  }
+  def list(prefix: DirPath): ResultT[IO, List[FilePath]] =
+    hdfs { Hdfs.filesystem.flatMap { fs =>
+      Hdfs.globFilesRecursively(base </> prefix).map { paths =>
+        paths.map(path => FilePath.unsafe(path.toUri).relativeTo(DirPath.unsafe(fs.makeQualified(base).toString)))
+      }
+    }}
 
-  def list(prefix: FilePath): ResultT[IO, List[FilePath]] =
-    hdfs { Hdfs.globFilesRecursively(new Path((base </> prefix).path)).map(_.map(normalize).sorted).map(_.map(_.toFilePath)) }
 
-  def filter(prefix: FilePath, predicate: FilePath => Boolean): ResultT[IO, List[FilePath]] =
+  def filter(prefix: DirPath, predicate: FilePath => Boolean): ResultT[IO, List[FilePath]] =
     list(prefix).map(_.filter(predicate))
 
-  def find(prefix: FilePath, predicate: FilePath => Boolean): ResultT[IO, Option[FilePath]] =
+  def find(prefix: DirPath, predicate: FilePath => Boolean): ResultT[IO, Option[FilePath]] =
     list(prefix).map(_.find(predicate))
 
   def exists(path: FilePath): ResultT[IO, Boolean] =
-    hdfs { Hdfs.exists(new Path((base </> path).path)) }
+    hdfs { Hdfs.exists(base </> path) }
+
+  def exists(path: DirPath): ResultT[IO, Boolean] =
+    hdfs { Hdfs.exists(base </> path) }
 
   def delete(path: FilePath): ResultT[IO, Unit] =
-    hdfs { Hdfs.delete(new Path((base </> path).path)) }
+    hdfs { Hdfs.delete(base </> path) }
 
-  def deleteAll(prefix: FilePath): ResultT[IO, Unit] =
-    hdfs { Hdfs.deleteAll(new Path((base </> prefix).path)) }
+  def deleteAll(prefix: DirPath): ResultT[IO, Unit] =
+    hdfs { Hdfs.deleteAll(base </> prefix) }
 
   def move(in: FilePath, out: FilePath): ResultT[IO, Unit] =
     copy(in, out) >> delete(in)
 
-  def copy(in: FilePath, out: FilePath): ResultT[IO, Unit] = hdfs { for {
-    dir <- Hdfs.isDirectory(new Path((base </> out).path))
-    _   <- if (dir) Hdfs.cp(new Path((base </> in).path), new Path((base </> out </> in.basename).path), false) else Hdfs.cp(new Path((base </> in).path), new Path((base </> out).path), false)
-  } yield () }
+  def copy(in: FilePath, out: FilePath): ResultT[IO, Unit] =
+    hdfs { Hdfs.cp(base </> in, base </> out, false) }
 
-  def mirror(in: FilePath, out: FilePath): ResultT[IO, Unit] = for {
+  def mirror(in: DirPath, out: DirPath): ResultT[IO, Unit] = for {
     paths <- list(in)
-    _     <- paths.traverseU({ source =>
-      val destination = out </> source.path.replace(in.path + "/", "")
-      copy(source, destination)
-    })
+    _     <- paths.traverseU(source => copy(source, out </> source))
   } yield ()
 
   def moveTo(store: Store[ResultTIO], src: FilePath, dest: FilePath): ResultT[IO, Unit] =
@@ -67,12 +66,9 @@ case class HdfsStore(conf: Configuration, base: FilePath) extends Store[ResultTI
       store.unsafe.withOutputStream(dest) { out =>
         Streams.pipe(in, out) }}
 
-  def mirrorTo(store: Store[ResultTIO], in: FilePath, out: FilePath): ResultT[IO, Unit] = for {
+  def mirrorTo(store: Store[ResultTIO], in: DirPath, out: DirPath): ResultT[IO, Unit] = for {
     paths <- list(in)
-    _     <- paths.traverseU({ source =>
-      val destination = out </> source.path.replace(in.path + "/", "")
-      copyTo(store, source, destination)
-    })
+    _     <- paths.traverseU(source => copyTo(store, source, out </> source))
   } yield ()
 
   def checksum(path: FilePath, algorithm: ChecksumAlgorithm): ResultT[IO, Checksum] =
@@ -86,7 +82,7 @@ case class HdfsStore(conf: Configuration, base: FilePath) extends Store[ResultTI
       unsafe.withOutputStream(path)(Streams.writeBytes(_, data.toArray))
 
     def source(path: FilePath): Process[Task, ByteVector] =
-      scalaz.stream.io.chunkR(FileSystem.get(conf).open(new Path((base </> path).path))).evalMap(_(1024 * 1024))
+      scalaz.stream.io.chunkR(FileSystem.get(conf).open(base </> path)).evalMap(_(1024 * 1024))
 
     def sink(path: FilePath): Sink[Task, ByteVector] =
       io.resource(Task.delay(new PipedOutputStream))(out => Task.delay(out.close))(
@@ -124,7 +120,7 @@ case class HdfsStore(conf: Configuration, base: FilePath) extends Store[ResultTI
       strings.write(path, Lists.prepareForFile(data), codec)
 
     def source(path: FilePath, codec: Codec): Process[Task, String] =
-      scalaz.stream.io.linesR(FileSystem.get(conf).open(new Path((base </> path).path)))(codec)
+      scalaz.stream.io.linesR(FileSystem.get(conf).open(base </> path))(codec)
 
     def sink(path: FilePath, codec: Codec): Sink[Task, String] =
       bytes.sink(path).map(_.contramap(s => ByteVector.view(s"$s\n".getBytes(codec.name))))
@@ -145,16 +141,20 @@ case class HdfsStore(conf: Configuration, base: FilePath) extends Store[ResultTI
   }
 
   def withInputStreamValue[A](path: FilePath)(f: InputStream => ResultT[IO, A]): ResultT[IO, A] =
-    hdfs { Hdfs.readWith(new Path((base </> path).path), f) }
+    hdfs { Hdfs.readWith(base </> path, f) }
 
   val unsafe: StoreUnsafe[ResultTIO] = new StoreUnsafe[ResultTIO] {
     def withInputStream(path: FilePath)(f: InputStream => ResultT[IO, Unit]): ResultT[IO, Unit] =
       withInputStreamValue[Unit](path)(f)
 
     def withOutputStream(path: FilePath)(f: OutputStream => ResultT[IO, Unit]): ResultT[IO, Unit] =
-      hdfs { Hdfs.writeWith(new Path((base </> path).path), f) }
+      hdfs { Hdfs.writeWith(base </> path, f) }
   }
 
   def hdfs[A](thunk: => Hdfs[A]): ResultT[IO, A] =
     thunk.run(conf)
+
+  private implicit def filePathToPath(f: FilePath): Path = new Path(f.path)
+  private implicit def dirPathToPath(d: DirPath): Path = new Path(d.path)
+
 }

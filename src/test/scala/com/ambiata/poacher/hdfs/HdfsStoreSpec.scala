@@ -62,38 +62,38 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = args.execut
 
   implicit def HdfsStoreArbitary: Arbitrary[HdfsStore] =
     Arbitrary(arbitrary[Int].map(math.abs).map(n =>
-      HdfsStore(conf, FilePath.root </> "tmp" </> s"HdfsStoreSpec.${UUID.randomUUID}.${n}")))
+      HdfsStore(conf, DirPath.Root </> "tmp" </> FileName.unsafe(s"HdfsStoreSpec.${UUID.randomUUID}.${n}"))))
 
   def list =
     prop((store: HdfsStore, paths: Paths) => clean(store, paths) { filepaths =>
-       store.list(FilePath.root) must beOkValue(filepaths) })
+       store.list(DirPath.Root) must beOkLike((_:List[FilePath]) must contain(exactly(filepaths:_*))) })
 
   def filter =
     prop((store: HdfsStore, paths: Paths) => clean(store, paths) { filepaths =>
       val first = filepaths.head
       val last = filepaths.last
       val expected = if (first == last) List(first) else List(first, last)
-      store.filter(FilePath.root, x => x == first || x == last) must beOkLike(paths => paths must contain(allOf(expected:_*))) })
+      store.filter(DirPath.Root, x => x == first || x == last) must beOkLike(paths => paths must contain(allOf(expected:_*))) })
 
   def find =
     prop((store: HdfsStore, paths: Paths) => paths.entries.length >= 3 ==> { clean(store, paths) { filepaths =>
       val third = filepaths.drop(2).head
-      store.find(FilePath.root, _ == third) must beOkValue(Some(third)) } })
+      store.find(DirPath.Root, _ == third) must beOkValue(Some(third)) } })
 
   def findfirst =
     prop((store: HdfsStore, paths: Paths) => clean(store, paths) { filepaths =>
-      store.find(FilePath.root, x => x == filepaths.head) must beOkValue(Some(filepaths.head)) })
+      store.find(DirPath.Root, x => x == filepaths.head) must beOkValue(Some(filepaths.head)) })
 
   def findlast =
     prop((store: HdfsStore, paths: Paths) => clean(store, paths) { filepaths =>
-      store.find(FilePath.root, x => x == filepaths.last) must beOkValue(Some(filepaths.last)) })
+      store.find(DirPath.Root, x => x == filepaths.last) must beOkValue(Some(filepaths.last)) })
 
   def exists =
     prop((store: HdfsStore, paths: Paths) => clean(store, paths) { filepaths =>
       filepaths.traverseU(store.exists) must beOkLike(_.forall(identity)) })
 
   def notExists =
-    prop((store: HdfsStore, paths: Paths) => store.exists(FilePath.root </> "i really don't exist") must beOkValue(false))
+    prop((store: HdfsStore, paths: Paths) => store.exists(DirPath.Root </> "i really don't exist") must beOkValue(false))
 
   def delete =
     prop((store: HdfsStore, paths: Paths) => clean(store, paths) { filepaths =>
@@ -102,86 +102,92 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = args.execut
 
   def deleteAll =
     prop((store: HdfsStore, paths: Paths) => clean(store, paths) { filepaths =>
-      (store.deleteAll(FilePath.root) >> filepaths.traverseU(store.exists)) must beOkLike(x => !x.tail.exists(identity)) })
+      (store.deleteAll(DirPath.Root) >> filepaths.traverseU(store.exists)) must beOkLike(x => !x.tail.exists(identity)) })
 
   def move =
     prop((store: HdfsStore, m: Entry, n: Entry) => clean(store, Paths(m :: Nil)) { _ =>
-      (store.move(m.full.toFilePath, n.full.toFilePath) >>
-       store.exists(m.full.toFilePath).zip(store.exists(n.full.toFilePath))) must beOkValue(false -> true) })
+      (store.move(FilePath.unsafe(m.full), FilePath.unsafe(n.full)) >>
+       store.exists(FilePath.unsafe(m.full)).zip(store.exists(FilePath.unsafe(n.full)))) must beOkValue(false -> true) })
 
   def moveRead =
     prop((store: HdfsStore, m: Entry, n: Entry) => clean(store, Paths(m :: Nil)) { _ =>
-      (store.move(m.full.toFilePath, n.full.toFilePath) >>
-       store.utf8.read(n.full.toFilePath)) must beOkValue(m.value.toString) })
+      (store.move(FilePath.unsafe(m.full), FilePath.unsafe(n.full)) >>
+       store.utf8.read(FilePath.unsafe(n.full))) must beOkValue(m.value.toString) })
 
   def copy =
     prop((store: HdfsStore, m: Entry, n: Entry) => clean(store, Paths(m :: Nil)) { _ =>
-      (store.copy(m.full.toFilePath, n.full.toFilePath) >>
-       store.exists(m.full.toFilePath).zip(store.exists(n.full.toFilePath))) must beOkValue(true -> true) })
+      (store.copy(FilePath.unsafe(m.full), FilePath.unsafe(n.full)) >>
+       store.exists(FilePath.unsafe(m.full)).zip(store.exists(FilePath.unsafe(n.full)))) must beOkValue(true -> true) })
 
   def copyRead =
     prop((store: HdfsStore, m: Entry, n: Entry) => clean(store, Paths(m :: Nil)) { _ =>
-      (store.copy(m.full.toFilePath, n.full.toFilePath) >>
-       store.utf8.read(m.full.toFilePath).zip(store.utf8.read(n.full.toFilePath))) must beOkLike({ case (in, out) => in must_== out }) })
+      (store.copy(FilePath.unsafe(m.full), FilePath.unsafe(n.full)) >>
+       store.utf8.read(FilePath.unsafe(m.full)).zip(store.utf8.read(FilePath.unsafe(n.full)))) must beOkLike({ case (in, out) => in must_== out }) })
 
   def mirror =
     prop((store: HdfsStore, paths: Paths) => clean(store, paths) { filepaths =>
-      store.mirror(FilePath.root, FilePath.root </> "mirror") >> store.list(FilePath.root </> "mirror") must beOkValue(filepaths.map("mirror" </> _)) })
+      store.mirror(DirPath.Root, DirPath.unsafe("mirror")) >> store.list(DirPath.unsafe("mirror")) must
+        beOkLike((_:List[FilePath]) must contain(exactly(filepaths.map("mirror" </> _):_*))) })
 
   def moveTo =
     prop((store: HdfsStore, alternate: HdfsStore, m: Entry, n: Entry) => clean(store, alternate, Paths(m :: Nil)) { _ =>
-      (store.moveTo(alternate, m.full.toFilePath, n.full.toFilePath) >>
-       store.exists(m.full.toFilePath).zip(alternate.exists(n.full.toFilePath))) must beOkValue(false -> true) })
+      (store.moveTo(alternate, FilePath.unsafe(m.full), FilePath.unsafe(n.full)) >>
+       store.exists(FilePath.unsafe(m.full)).zip(alternate.exists(FilePath.unsafe(n.full)))) must beOkValue(false -> true) })
 
   def copyTo =
     prop((store: HdfsStore, alternate: HdfsStore, m: Entry, n: Entry) => clean(store, alternate, Paths(m :: Nil)) { _ =>
-      (store.copyTo(alternate, m.full.toFilePath, n.full.toFilePath) >>
-       store.exists(m.full.toFilePath).zip(alternate.exists(n.full.toFilePath))) must beOkValue(true -> true) })
+      (store.copyTo(alternate, FilePath.unsafe(m.full), FilePath.unsafe(n.full)) >>
+       store.exists(FilePath.unsafe(m.full)).zip(alternate.exists(FilePath.unsafe(n.full)))) must beOkValue(true -> true) })
 
   def mirrorTo =
     prop((store: HdfsStore, alternate: HdfsStore, paths: Paths) => clean(store, alternate, paths) { filepaths =>
-      store.mirrorTo(alternate, FilePath.root, FilePath.root </> "mirror") >> alternate.list(FilePath.root </> "mirror") must beOkValue(filepaths.map("mirror" </> _)) })
+      store.mirrorTo(alternate, DirPath.Root, DirPath.unsafe("mirror")) >> alternate.list(DirPath.unsafe("mirror")) must
+        beOkLike((_:List[FilePath]) must contain(exactly(filepaths.map("mirror" </> _):_*))) })
 
   def checksum =
     prop((store: HdfsStore, m: Entry) => clean(store, Paths(m :: Nil)) { _ =>
-      store.checksum(m.full.toFilePath, MD5) must beOkValue(Checksum.string(m.value.toString, MD5)) })
+      store.checksum(FilePath.unsafe(m.full), MD5) must beOkValue(Checksum.string(m.value.toString, MD5)) })
 
   def bytes =
     prop((store: HdfsStore, m: Entry, bytes: Array[Byte]) => clean(store, Paths(m :: Nil)) { _ =>
-      (store.bytes.write(m.full.toFilePath, ByteVector(bytes)) >> store.bytes.read(m.full.toFilePath)) must beOkValue(ByteVector(bytes)) })
+      (store.bytes.write(FilePath.unsafe(m.full), ByteVector(bytes)) >> store.bytes.read(FilePath.unsafe(m.full))) must beOkValue(ByteVector(bytes)) })
 
   def strings =
     prop((store: HdfsStore, m: Entry, s: String) => clean(store, Paths(m :: Nil)) { _ =>
-      (store.strings.write(m.full.toFilePath, s, Codec.UTF8) >> store.strings.read(m.full.toFilePath, Codec.UTF8)) must beOkValue(s) })
+      (store.strings.write(FilePath.unsafe(m.full), s, Codec.UTF8) >> store.strings.read(FilePath.unsafe(m.full), Codec.UTF8)) must beOkValue(s) })
 
   def utf8Strings =
     prop((store: HdfsStore, m: Entry, s: String) => clean(store, Paths(m :: Nil)) { _ =>
-      (store.utf8.write(m.full.toFilePath, s) >> store.utf8.read(m.full.toFilePath)) must beOkValue(s) })
+      (store.utf8.write(FilePath.unsafe(m.full), s) >> store.utf8.read(FilePath.unsafe(m.full))) must beOkValue(s) })
 
   def lines =
     prop((store: HdfsStore, m: Entry, s: List[Int]) => clean(store, Paths(m :: Nil)) { _ =>
-      (store.lines.write(m.full.toFilePath, s.map(_.toString), Codec.UTF8) >> store.lines.read(m.full.toFilePath, Codec.UTF8)) must beOkValue(s.map(_.toString)) })
+      (store.lines.write(FilePath.unsafe(m.full), s.map(_.toString), Codec.UTF8) >> store.lines.read(FilePath.unsafe(m.full), Codec.UTF8)) must beOkValue(s.map(_.toString)) })
 
   def utf8Lines =
     prop((store: HdfsStore, m: Entry, s: List[Int]) => clean(store, Paths(m :: Nil)) { _ =>
-      (store.linesUtf8.write(m.full.toFilePath, s.map(_.toString)) >> store.linesUtf8.read(m.full.toFilePath)) must beOkValue(s.map(_.toString)) })
+      (store.linesUtf8.write(FilePath.unsafe(m.full), s.map(_.toString)) >> store.linesUtf8.read(FilePath.unsafe(m.full))) must beOkValue(s.map(_.toString)) })
 
   def files(paths: Paths): List[FilePath] =
-    paths.entries.map(e => e.full.toFilePath).sortBy(_.path)
+    paths.entries.map(e => FilePath.unsafe(e.full)).sortBy(_.path)
 
   def create(store: HdfsStore, paths: Paths): ResultT[IO, Unit] =
     paths.entries.traverseU(e =>
-      Hdfs.writeWith[Unit](new Path((store.base </> e.full).path), out => ResultT.safe[IO, Unit] { out.write( e.value.toString.getBytes("UTF-8")) }).run(conf)).void
+      Hdfs.writeWith[Unit](store.base </> FilePath.unsafe(e.full), out => ResultT.safe[IO, Unit] { out.write( e.value.toString.getBytes("UTF-8")) }).run(conf)).void
 
   def clean[A](store: HdfsStore, paths: Paths)(run: List[FilePath] => A): A = {
     create(store, paths).run.unsafePerformIO
     try run(files(paths))
-    finally store.deleteAll(FilePath.root).run.unsafePerformIO
+    finally store.deleteAll(DirPath.Root).run.unsafePerformIO
   }
 
   def clean[A](store: HdfsStore, alternate: HdfsStore, paths: Paths)(run: List[FilePath] => A): A = {
     create(store, paths).run.unsafePerformIO
     try run(files(paths))
-    finally (store.deleteAll(FilePath.root) >> alternate.deleteAll(FilePath.root)).run.unsafePerformIO
+    finally (store.deleteAll(DirPath.Root) >> alternate.deleteAll(DirPath.Root)).run.unsafePerformIO
   }
+
+  private implicit def filePathToPath(f: FilePath): Path = new Path(f.path)
+  private implicit def dirPathToPath(d: DirPath): Path = new Path(d.path)
+
 }
