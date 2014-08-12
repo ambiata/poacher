@@ -17,10 +17,10 @@ object build extends Build {
     Seq[Settings](libraryDependencies ++= depend.scalaz ++ depend.mundane ++ depend.scoobi(version.value) ++ depend.hadoop(version.value) ++ depend.specs2)
   )
 
-  lazy val standardSettings = Defaults.defaultSettings ++
-                              projectSettings          ++
-                              compilationSettings      ++
-                              testingSettings          ++
+  lazy val standardSettings = Defaults.coreDefaultSettings ++
+                              projectSettings              ++
+                              compilationSettings          ++
+                              testingSettings              ++
                               Seq[Settings](
                                 resolvers := depend.resolvers
                               )
