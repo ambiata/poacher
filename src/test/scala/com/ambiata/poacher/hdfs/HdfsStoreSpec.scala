@@ -10,7 +10,7 @@ import org.apache.hadoop.fs.Path
 import com.ambiata.mundane.control._
 import com.ambiata.mundane.io._
 import com.ambiata.mundane.testing._, ResultTIOMatcher._
-import java.io.{File, FileOutputStream, ByteArrayInputStream}
+import java.io._
 import java.util.UUID
 
 
@@ -44,13 +44,9 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = args.execut
   checksum                                        $checksum
 
   read / write bytes                              $bytes
-
   read / write strings                            $strings
-
   read / write utf8 strings                       $utf8Strings
-
   read / write lines                              $lines
-
   read / write utf8 lines                         $utf8Lines
 
   """
@@ -66,27 +62,27 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = args.execut
 
   def list =
     prop((store: HdfsStore, paths: Paths) => clean(store, paths) { filepaths =>
-       store.list(DirPath.Root) must beOkLike((_:List[FilePath]) must contain(exactly(filepaths:_*))) })
+       store.list(DirPath.Empty) must beOkLike((_:List[FilePath]) must contain(exactly(filepaths:_*))) })
 
   def filter =
     prop((store: HdfsStore, paths: Paths) => clean(store, paths) { filepaths =>
       val first = filepaths.head
       val last = filepaths.last
       val expected = if (first == last) List(first) else List(first, last)
-      store.filter(DirPath.Root, x => x == first || x == last) must beOkLike(paths => paths must contain(allOf(expected:_*))) })
+      store.filter(DirPath.Empty, x => x == first || x == last) must beOkLike(paths => paths must contain(allOf(expected:_*))) })
 
   def find =
     prop((store: HdfsStore, paths: Paths) => paths.entries.length >= 3 ==> { clean(store, paths) { filepaths =>
       val third = filepaths.drop(2).head
-      store.find(DirPath.Root, _ == third) must beOkValue(Some(third)) } })
+      store.find(DirPath.Empty, _ == third) must beOkValue(Some(third)) } })
 
   def findfirst =
     prop((store: HdfsStore, paths: Paths) => clean(store, paths) { filepaths =>
-      store.find(DirPath.Root, x => x == filepaths.head) must beOkValue(Some(filepaths.head)) })
+      store.find(DirPath.Empty, x => x == filepaths.head) must beOkValue(Some(filepaths.head)) })
 
   def findlast =
     prop((store: HdfsStore, paths: Paths) => clean(store, paths) { filepaths =>
-      store.find(DirPath.Root, x => x == filepaths.last) must beOkValue(Some(filepaths.last)) })
+      store.find(DirPath.Empty, x => x == filepaths.last) must beOkValue(Some(filepaths.last)) })
 
   def exists =
     prop((store: HdfsStore, paths: Paths) => clean(store, paths) { filepaths =>
@@ -102,7 +98,7 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = args.execut
 
   def deleteAll =
     prop((store: HdfsStore, paths: Paths) => clean(store, paths) { filepaths =>
-      (store.deleteAll(DirPath.Root) >> filepaths.traverseU(store.exists)) must beOkLike(x => !x.tail.exists(identity)) })
+      (store.deleteAll(DirPath.Empty) >> filepaths.traverseU(store.exists)) must beOkLike(x => !x.tail.exists(identity)) })
 
   def move =
     prop((store: HdfsStore, m: Entry, n: Entry) => clean(store, Paths(m :: Nil)) { _ =>
@@ -126,7 +122,7 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = args.execut
 
   def mirror =
     prop((store: HdfsStore, paths: Paths) => clean(store, paths) { filepaths =>
-      store.mirror(DirPath.Root, DirPath.unsafe("mirror")) >> store.list(DirPath.unsafe("mirror")) must
+      store.mirror(DirPath.Empty, DirPath.unsafe("mirror")) >> store.list(DirPath.unsafe("mirror")) must
         beOkLike((_:List[FilePath]) must contain(exactly(filepaths.map("mirror" </> _):_*))) })
 
   def moveTo =
@@ -141,7 +137,7 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = args.execut
 
   def mirrorTo =
     prop((store: HdfsStore, alternate: HdfsStore, paths: Paths) => clean(store, alternate, paths) { filepaths =>
-      store.mirrorTo(alternate, DirPath.Root, DirPath.unsafe("mirror")) >> alternate.list(DirPath.unsafe("mirror")) must
+      store.mirrorTo(alternate, DirPath.Empty, DirPath.unsafe("mirror")) >> alternate.list(DirPath.unsafe("mirror")) must
         beOkLike((_:List[FilePath]) must contain(exactly(filepaths.map("mirror" </> _):_*))) })
 
   def checksum =
@@ -169,7 +165,7 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = args.execut
       (store.linesUtf8.write(FilePath.unsafe(m.full), s.map(_.toString)) >> store.linesUtf8.read(FilePath.unsafe(m.full))) must beOkValue(s.map(_.toString)) })
 
   def files(paths: Paths): List[FilePath] =
-    paths.entries.map(e => FilePath.unsafe(e.full)).sortBy(_.path)
+    paths.entries.map(e => FilePath.unsafe(e.full).asRelative).sortBy(_.path)
 
   def create(store: HdfsStore, paths: Paths): ResultT[IO, Unit] =
     paths.entries.traverseU(e =>
@@ -178,13 +174,13 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = args.execut
   def clean[A](store: HdfsStore, paths: Paths)(run: List[FilePath] => A): A = {
     create(store, paths).run.unsafePerformIO
     try run(files(paths))
-    finally store.deleteAll(DirPath.Root).run.unsafePerformIO
+    finally store.deleteAll(DirPath.Empty).run.unsafePerformIO
   }
 
   def clean[A](store: HdfsStore, alternate: HdfsStore, paths: Paths)(run: List[FilePath] => A): A = {
     create(store, paths).run.unsafePerformIO
     try run(files(paths))
-    finally (store.deleteAll(DirPath.Root) >> alternate.deleteAll(DirPath.Root)).run.unsafePerformIO
+    finally (store.deleteAll(DirPath.Empty) >> alternate.deleteAll(DirPath.Empty)).run.unsafePerformIO
   }
 
   private implicit def filePathToPath(f: FilePath): Path = new Path(f.path)
