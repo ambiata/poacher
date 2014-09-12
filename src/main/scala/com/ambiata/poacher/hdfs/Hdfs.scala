@@ -59,6 +59,9 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
   def fromValidation[A](v: Validation[String, A]): Hdfs[A] =
     fromDisjunction(v.disjunction)
 
+  def fromOption[A](o: Option[A], err: String): Hdfs[A] =
+    o.map(value).getOrElse(fail(err))
+
   def fromIO[A](io: IO[A]): Hdfs[A] =
     Hdfs(super.fromIO(io))
 
