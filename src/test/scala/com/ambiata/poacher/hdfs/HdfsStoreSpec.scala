@@ -128,7 +128,7 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = args.execut
   def mirror =
     prop((store: HdfsStore, paths: Paths) => clean(store, paths) { filepaths =>
       store.mirror(DirPath.Empty, DirPath.unsafe("mirror")) >> store.list(DirPath.unsafe("mirror")) must
-        beOkLike((_:List[FilePath]) must contain(exactly(filepaths.map("mirror" </> _):_*))) })
+        beOkLike((_:List[FilePath]) must contain(exactly(filepaths:_*))) })
 
   def moveTo =
     prop((store: HdfsStore, alternate: HdfsStore, m: Entry, n: Entry) => clean(store, alternate, Paths(m :: Nil)) { _ =>
@@ -143,7 +143,7 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = args.execut
   def mirrorTo =
     prop((store: HdfsStore, alternate: HdfsStore, paths: Paths) => clean(store, alternate, paths) { filepaths =>
       store.mirrorTo(alternate, DirPath.Empty, DirPath.unsafe("mirror")) >> alternate.list(DirPath.unsafe("mirror")) must
-        beOkLike((_:List[FilePath]) must contain(exactly(filepaths.map("mirror" </> _):_*))) })
+        beOkLike((_:List[FilePath]) must contain(exactly(filepaths:_*))) })
 
   def checksum =
     prop((store: HdfsStore, m: Entry) => clean(store, Paths(m :: Nil)) { _ =>
