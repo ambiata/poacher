@@ -24,10 +24,9 @@ case class HdfsStore(conf: Configuration, base: DirPath) extends Store[ResultTIO
   def list(prefix: DirPath): ResultT[IO, List[FilePath]] =
     hdfs { Hdfs.filesystem.flatMap { fs =>
       Hdfs.globFilesRecursively(base </> prefix).map { paths =>
-        paths.map(path => FilePath.unsafe(path.toUri).relativeTo(DirPath.unsafe(fs.makeQualified(base).toString)))
+        paths.map(path => FilePath.unsafe(path.toString).relativeTo(base </> prefix))
       }
     }}
-
 
   def filter(prefix: DirPath, predicate: FilePath => Boolean): ResultT[IO, List[FilePath]] =
     list(prefix).map(_.filter(predicate))

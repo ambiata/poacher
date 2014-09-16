@@ -20,6 +20,7 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = args.execut
   ================
 
   list path                                       $list
+  list all files paths from a sub path            $listSubPath
   filter listed paths                             $filter
   find path in root (thirdish)                    $find
   find path in root (first)                       $findfirst
@@ -63,6 +64,10 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = args.execut
   def list =
     prop((store: HdfsStore, paths: Paths) => clean(store, paths) { filepaths =>
        store.list(DirPath.Empty) must beOkLike((_:List[FilePath]) must contain(exactly(filepaths:_*))) })
+
+  def listSubPath =
+    prop((store: HdfsStore, paths: Paths) => clean(store, paths.map(_ prepend "sub")) { filepaths =>
+      store.list(DirPath.Empty </> "sub") must beOkLike((_:List[FilePath]).toSet must_== filepaths.map(_.fromRoot).toSet) })
 
   def filter =
     prop((store: HdfsStore, paths: Paths) => clean(store, paths) { filepaths =>
