@@ -14,17 +14,17 @@ import scalaz.{Store => _, _}, Scalaz._, scalaz.stream._, scalaz.concurrent._, e
 import scodec.bits.ByteVector
 import FilePath._
 
-case class HdfsStore(conf: Configuration, base: DirPath) extends Store[ResultTIO] with ReadOnlyStore[ResultTIO] {
+case class HdfsStore(conf: Configuration, root: DirPath) extends Store[ResultTIO] with ReadOnlyStore[ResultTIO] {
   def readOnly: ReadOnlyStore[ResultTIO] =
     this
 
   def basePath: Path =
-    new Path(base.path)
+    new Path(root.path)
 
   def list(prefix: DirPath): ResultT[IO, List[FilePath]] =
     hdfs { Hdfs.filesystem.flatMap { fs =>
-      Hdfs.globFilesRecursively(base </> prefix).map { paths =>
-        paths.map(path => FilePath.unsafe(path.toString).relativeTo(base </> prefix))
+      Hdfs.globFilesRecursively(root </> prefix).map { paths =>
+        paths.map(path => FilePath.unsafe(path.toString).relativeTo(root </> prefix))
       }
     }}
 
@@ -35,22 +35,22 @@ case class HdfsStore(conf: Configuration, base: DirPath) extends Store[ResultTIO
     list(prefix).map(_.find(predicate))
 
   def exists(path: FilePath): ResultT[IO, Boolean] =
-    hdfs { Hdfs.exists(base </> path) }
+    hdfs { Hdfs.exists(root </> path) }
 
   def exists(path: DirPath): ResultT[IO, Boolean] =
-    hdfs { Hdfs.exists(base </> path) }
+    hdfs { Hdfs.exists(root </> path) }
 
   def delete(path: FilePath): ResultT[IO, Unit] =
-    hdfs { Hdfs.delete(base </> path) }
+    hdfs { Hdfs.delete(root </> path) }
 
   def deleteAll(prefix: DirPath): ResultT[IO, Unit] =
-    hdfs { Hdfs.deleteAll(base </> prefix) }
+    hdfs { Hdfs.deleteAll(root </> prefix) }
 
   def move(in: FilePath, out: FilePath): ResultT[IO, Unit] =
     copy(in, out) >> delete(in)
 
   def copy(in: FilePath, out: FilePath): ResultT[IO, Unit] =
-    hdfs { Hdfs.cp(base </> in, base </> out, false) }
+    hdfs { Hdfs.cp(root </> in, root </> out, false) }
 
   def mirror(in: DirPath, out: DirPath): ResultT[IO, Unit] = for {
     paths <- list(in)
@@ -81,7 +81,7 @@ case class HdfsStore(conf: Configuration, base: DirPath) extends Store[ResultTIO
       unsafe.withOutputStream(path)(Streams.writeBytes(_, data.toArray))
 
     def source(path: FilePath): Process[Task, ByteVector] =
-      scalaz.stream.io.chunkR(FileSystem.get(conf).open(base </> path)).evalMap(_(1024 * 1024))
+      scalaz.stream.io.chunkR(FileSystem.get(conf).open(root </> path)).evalMap(_(1024 * 1024))
 
     def sink(path: FilePath): Sink[Task, ByteVector] =
       io.resource(Task.delay(new PipedOutputStream))(out => Task.delay(out.close))(
@@ -119,7 +119,7 @@ case class HdfsStore(conf: Configuration, base: DirPath) extends Store[ResultTIO
       strings.write(path, Lists.prepareForFile(data), codec)
 
     def source(path: FilePath, codec: Codec): Process[Task, String] =
-      scalaz.stream.io.linesR(FileSystem.get(conf).open(base </> path))(codec)
+      scalaz.stream.io.linesR(FileSystem.get(conf).open(root </> path))(codec)
 
     def sink(path: FilePath, codec: Codec): Sink[Task, String] =
       bytes.sink(path).map(_.contramap(s => ByteVector.view(s"$s\n".getBytes(codec.name))))
@@ -140,14 +140,14 @@ case class HdfsStore(conf: Configuration, base: DirPath) extends Store[ResultTIO
   }
 
   def withInputStreamValue[A](path: FilePath)(f: InputStream => ResultT[IO, A]): ResultT[IO, A] =
-    hdfs { Hdfs.readWith(base </> path, f) }
+    hdfs { Hdfs.readWith(root </> path, f) }
 
   val unsafe: StoreUnsafe[ResultTIO] = new StoreUnsafe[ResultTIO] {
     def withInputStream(path: FilePath)(f: InputStream => ResultT[IO, Unit]): ResultT[IO, Unit] =
       withInputStreamValue[Unit](path)(f)
 
     def withOutputStream(path: FilePath)(f: OutputStream => ResultT[IO, Unit]): ResultT[IO, Unit] =
-      hdfs { Hdfs.writeWith(base </> path, f) }
+      hdfs { Hdfs.writeWith(root </> path, f) }
   }
 
   def hdfs[A](thunk: => Hdfs[A]): ResultT[IO, A] =

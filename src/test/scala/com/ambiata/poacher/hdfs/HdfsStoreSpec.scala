@@ -174,7 +174,7 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = args.execut
 
   def create(store: HdfsStore, paths: Paths): ResultT[IO, Unit] =
     paths.entries.traverseU(e =>
-      Hdfs.writeWith[Unit](store.base </> FilePath.unsafe(e.full), out => ResultT.safe[IO, Unit] { out.write( e.value.toString.getBytes("UTF-8")) }).run(conf)).void
+      Hdfs.writeWith[Unit](store.root </> FilePath.unsafe(e.full), out => ResultT.safe[IO, Unit] { out.write( e.value.toString.getBytes("UTF-8")) }).run(conf)).void
 
   def clean[A](store: HdfsStore, paths: Paths)(run: List[FilePath] => A): A = {
     create(store, paths).run.unsafePerformIO
