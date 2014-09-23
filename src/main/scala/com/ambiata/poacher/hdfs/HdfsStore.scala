@@ -27,6 +27,13 @@ case class HdfsStore(conf: Configuration, root: DirPath) extends Store[ResultTIO
       }
     }}
 
+  def listHeads(prefix: Key): ResultT[IO, List[Key]] =
+    hdfs { Hdfs.filesystem.flatMap { fs =>
+      Hdfs.globPaths(root </> keyToDirPath(prefix)).map { paths =>
+        paths.map(path => Key.unsafe(path.getName))
+      }
+    }}
+
   def filter(prefix: Key, predicate: Key => Boolean): ResultT[IO, List[Key]] =
     list(prefix).map(_.filter(predicate))
 
