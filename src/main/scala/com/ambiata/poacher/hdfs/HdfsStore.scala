@@ -34,6 +34,13 @@ case class HdfsStore(conf: Configuration, root: DirPath) extends Store[ResultTIO
       }
     }}
 
+  def listDropRightOne(prefix: Key): ResultT[IO, List[Key]] =
+    hdfs { Hdfs.filesystem.flatMap { fs =>
+      Hdfs.globLeafDirs(root </> keyToDirPath(prefix)).map { paths =>
+        paths.map(path => filePathToKey(FilePath.unsafe(path.toString).relativeTo(root </> keyToDirPath(prefix))))
+      }
+    }}
+
   def filter(prefix: Key, predicate: Key => Boolean): ResultT[IO, List[Key]] =
     list(prefix).map(_.filter(predicate))
 
