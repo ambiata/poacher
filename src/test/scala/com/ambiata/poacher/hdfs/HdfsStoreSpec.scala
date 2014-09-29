@@ -30,6 +30,7 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = args.execut
   find path in root (last)                        $findlast
 
   exists                                          $exists
+  existsPrefix                                    $existsPrefix
   not exists                                      $notExists
 
   delete                                          $delete
@@ -99,6 +100,10 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = args.execut
   def exists =
     prop((store: HdfsStore, keys: Keys) => clean(store, keys) { keys =>
       keys.traverseU(store.exists) must beOkLike(_.forall(identity)) })
+
+  def existsPrefix =
+    prop((store: HdfsStore, keys: Keys) => clean(store, keys) { keys =>
+      keys.traverseU(key => store.existsPrefix(key.copy(components = key.components.dropRight(1)))) must beOkLike(_.forall(identity)) })
 
   def notExists =
     prop((store: HdfsStore, keys: Keys) => store.exists(Key.Root / "i really don't exist") must beOkValue(false))

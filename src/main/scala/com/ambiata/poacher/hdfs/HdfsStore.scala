@@ -43,6 +43,9 @@ case class HdfsStore(conf: Configuration, root: DirPath) extends Store[ResultTIO
   def exists(key: Key): ResultT[IO, Boolean] =
     hdfs { Hdfs.exists(root </> keyToFilePath(key)) }
 
+  def existsPrefix(prefix: Key): ResultT[IO, Boolean] =
+    hdfs { Hdfs.exists(root </> keyToFilePath(prefix)) }
+
   def delete(key: Key): ResultT[IO, Unit] =
     hdfs { Hdfs.delete(root </> keyToFilePath(key)) }
 
