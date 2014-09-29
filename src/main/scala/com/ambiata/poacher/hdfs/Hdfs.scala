@@ -137,17 +137,6 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
     files <- globPathsRecursively(p, glob)
   } yield files.filter(fs.isFile)
 
-  def globLeafDirs(p: Path, glob: String = "*"): Hdfs[List[Path]] = {
-    def getDirs(path: Path): FileSystem => List[Path] = { fs: FileSystem =>
-      if (fs.isDirectory(path)) {
-        val (dirs, files) = fs.globStatus(new Path(path, glob)).toList.partition(_.isDirectory)
-        (if (files.isEmpty) Nil else List(path)) ++
-         dirs.map(_.getPath).flatMap(d => getDirs(d)(fs))
-      } else Nil
-    }
-    filesystem.map(getDirs(p))
-  }
-
   /**
    * strip out the non-glob path and the glob path of a path
    * if the path has no globbing characters then the glob is "*"

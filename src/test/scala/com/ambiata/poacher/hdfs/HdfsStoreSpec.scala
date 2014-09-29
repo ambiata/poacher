@@ -24,7 +24,6 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = sequential 
   list keys                                       $list
   list all keys from a key prefix                 $listFromPrefix
   list all direct prefixes from a key prefix      $listHeadPrefixes
-  list last prefixes from a key prefix            $listDropRightOne
   filter listed paths                             $filter
   find path in root (thirdish)                    $find
   find path in root (first)                       $findfirst
@@ -77,10 +76,6 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = sequential 
   def listHeadPrefixes =
     prop((store: HdfsStore, keys: Keys) => clean(store, keys.map(_ prepend "sub")) { keys =>
       store.listHeads(Key.Root / "sub") must beOkLike((_:List[Key]).toSet must_== keys.map(_.fromRoot.head).toSet) })
-
-  def listDropRightOne =
-    prop((store: HdfsStore, keys: Keys) => clean(store, keys.map(_ prepend "sub")) { keys =>
-      store.listDropRightOne(Key.Root / "sub") must beOkLike((_:List[Key]).toSet must_== keys.map(_.fromRoot.dropRight(1)).toSet) }).set(workers=1)
 
   def filter =
     prop((store: HdfsStore, keys: Keys) => clean(store, keys) { keys =>
