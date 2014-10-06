@@ -4,7 +4,6 @@ import com.ambiata.mundane.control._
 import com.ambiata.mundane.io._
 import com.ambiata.mundane.data._
 import com.ambiata.mundane.store._
-import java.util.UUID
 import java.io.{InputStream, OutputStream}
 import java.io.{PipedInputStream, PipedOutputStream}
 import org.apache.hadoop.conf.Configuration
@@ -21,133 +20,140 @@ case class HdfsStore(conf: Configuration, root: DirPath) extends Store[ResultTIO
   def basePath: Path =
     new Path(root.path)
 
-  def list(prefix: DirPath): ResultT[IO, List[FilePath]] =
+  def list(prefix: Key): ResultT[IO, List[Key]] =
     hdfs { Hdfs.filesystem.flatMap { fs =>
-      Hdfs.globFilesRecursively(root </> prefix).map { paths =>
-        paths.map(path => FilePath.unsafe(path.toString).relativeTo(root </> prefix))
+      Hdfs.globFilesRecursively(root </> keyToDirPath(prefix)).map { paths =>
+        paths.map(path => filePathToKey(FilePath.unsafe(path.toString).relativeTo(root </> keyToDirPath(prefix))))
       }
     }}
 
-  def filter(prefix: DirPath, predicate: FilePath => Boolean): ResultT[IO, List[FilePath]] =
+  def listHeads(prefix: Key): ResultT[IO, List[Key]] =
+    hdfs { Hdfs.filesystem.flatMap { fs =>
+      Hdfs.globPaths(root </> keyToDirPath(prefix)).map { paths =>
+        paths.map(path => Key.unsafe(path.getName))
+      }
+    }}
+
+  def filter(prefix: Key, predicate: Key => Boolean): ResultT[IO, List[Key]] =
     list(prefix).map(_.filter(predicate))
 
-  def find(prefix: DirPath, predicate: FilePath => Boolean): ResultT[IO, Option[FilePath]] =
+  def find(prefix: Key, predicate: Key => Boolean): ResultT[IO, Option[Key]] =
     list(prefix).map(_.find(predicate))
 
-  def exists(path: FilePath): ResultT[IO, Boolean] =
-    hdfs { Hdfs.exists(root </> path) }
+  def exists(key: Key): ResultT[IO, Boolean] =
+    hdfs { Hdfs.exists(root </> keyToFilePath(key)) }
 
-  def exists(path: DirPath): ResultT[IO, Boolean] =
-    hdfs { Hdfs.exists(root </> path) }
+  def existsPrefix(prefix: Key): ResultT[IO, Boolean] =
+    hdfs { Hdfs.exists(root </> keyToFilePath(prefix)) }
 
-  def delete(path: FilePath): ResultT[IO, Unit] =
-    hdfs { Hdfs.delete(root </> path) }
+  def delete(key: Key): ResultT[IO, Unit] =
+    hdfs { Hdfs.delete(root </> keyToFilePath(key)) }
 
-  def deleteAll(prefix: DirPath): ResultT[IO, Unit] =
-    hdfs { Hdfs.deleteAll(root </> prefix) }
+  def deleteAll(prefix: Key): ResultT[IO, Unit] =
+    hdfs { Hdfs.deleteAll(root </> keyToDirPath(prefix)) }
 
-  def move(in: FilePath, out: FilePath): ResultT[IO, Unit] =
+  def move(in: Key, out: Key): ResultT[IO, Unit] =
     copy(in, out) >> delete(in)
 
-  def copy(in: FilePath, out: FilePath): ResultT[IO, Unit] =
-    hdfs { Hdfs.cp(root </> in, root </> out, false) }
+  def copy(in: Key, out: Key): ResultT[IO, Unit] =
+    hdfs { Hdfs.cp(root </> keyToFilePath(in), root </> keyToFilePath(out), false) }
 
-  def mirror(in: DirPath, out: DirPath): ResultT[IO, Unit] = for {
+  def mirror(in: Key, out: Key): ResultT[IO, Unit] = for {
     paths <- list(in)
-    _     <- paths.traverseU(source => copy(source, out </> source))
+    _     <- paths.traverseU(source => copy(source, out / source))
   } yield ()
 
-  def moveTo(store: Store[ResultTIO], src: FilePath, dest: FilePath): ResultT[IO, Unit] =
+  def moveTo(store: Store[ResultTIO], src: Key, dest: Key): ResultT[IO, Unit] =
     copyTo(store, src, dest) >> delete(src)
 
-  def copyTo(store: Store[ResultTIO], src: FilePath, dest: FilePath): ResultT[IO, Unit] =
+  def copyTo(store: Store[ResultTIO], src: Key, dest: Key): ResultT[IO, Unit] =
     unsafe.withInputStream(src) { in =>
       store.unsafe.withOutputStream(dest) { out =>
         Streams.pipe(in, out) }}
 
-  def mirrorTo(store: Store[ResultTIO], in: DirPath, out: DirPath): ResultT[IO, Unit] = for {
-    paths <- list(in)
-    _     <- paths.traverseU(source => copyTo(store, source, out </> source))
+  def mirrorTo(store: Store[ResultTIO], in: Key, out: Key): ResultT[IO, Unit] = for {
+    keys <- list(in)
+    _    <- keys.traverseU(source => copyTo(store, source, out / source))
   } yield ()
 
-  def checksum(path: FilePath, algorithm: ChecksumAlgorithm): ResultT[IO, Checksum] =
-    withInputStreamValue[Checksum](path)(in => Checksum.stream(in, algorithm))
+  def checksum(key: Key, algorithm: ChecksumAlgorithm): ResultT[IO, Checksum] =
+    withInputStreamValue[Checksum](key)(in => Checksum.stream(in, algorithm))
 
   val bytes: StoreBytes[ResultTIO] = new StoreBytes[ResultTIO] {
-    def read(path: FilePath): ResultT[IO, ByteVector] =
-      withInputStreamValue[Array[Byte]](path)(Streams.readBytes(_, 4 * 1024 * 1024)).map(ByteVector.view)
+    def read(key: Key): ResultT[IO, ByteVector] =
+      withInputStreamValue[Array[Byte]](key)(Streams.readBytes(_, 4 * 1024 * 1024)).map(ByteVector.view)
 
-    def write(path: FilePath, data: ByteVector): ResultT[IO, Unit] =
-      unsafe.withOutputStream(path)(Streams.writeBytes(_, data.toArray))
+    def write(key: Key, data: ByteVector): ResultT[IO, Unit] =
+      unsafe.withOutputStream(key)(Streams.writeBytes(_, data.toArray))
 
-    def source(path: FilePath): Process[Task, ByteVector] =
-      scalaz.stream.io.chunkR(FileSystem.get(conf).open(root </> path)).evalMap(_(1024 * 1024))
+    def source(key: Key): Process[Task, ByteVector] =
+      scalaz.stream.io.chunkR(FileSystem.get(conf).open(root </> keyToFilePath(key))).evalMap(_(1024 * 1024))
 
-    def sink(path: FilePath): Sink[Task, ByteVector] =
+    def sink(key: Key): Sink[Task, ByteVector] =
       io.resource(Task.delay(new PipedOutputStream))(out => Task.delay(out.close))(
         out => io.resource(Task.delay(new PipedInputStream))(in => Task.delay(in.close))(
           in => Task.now((bytes: ByteVector) => Task.delay(out.write(bytes.toArray)))).toTask)
   }
 
   val strings: StoreStrings[ResultTIO] = new StoreStrings[ResultTIO] {
-    def read(path: FilePath, codec: Codec): ResultT[IO, String] =
-      bytes.read(path).map(b => new String(b.toArray, codec.name))
+    def read(key: Key, codec: Codec): ResultT[IO, String] =
+      bytes.read(key).map(b => new String(b.toArray, codec.name))
 
-    def write(path: FilePath, data: String, codec: Codec): ResultT[IO, Unit] =
-      bytes.write(path, ByteVector.view(data.getBytes(codec.name)))
+    def write(key: Key, data: String, codec: Codec): ResultT[IO, Unit] =
+      bytes.write(key, ByteVector.view(data.getBytes(codec.name)))
   }
 
   val utf8: StoreUtf8[ResultTIO] = new StoreUtf8[ResultTIO] {
-    def read(path: FilePath): ResultT[IO, String] =
-      strings.read(path, Codec.UTF8)
+    def read(key: Key): ResultT[IO, String] =
+      strings.read(key, Codec.UTF8)
 
-    def write(path: FilePath, data: String): ResultT[IO, Unit] =
-      strings.write(path, data, Codec.UTF8)
+    def write(key: Key, data: String): ResultT[IO, Unit] =
+      strings.write(key, data, Codec.UTF8)
 
-    def source(path: FilePath): Process[Task, String] =
-      bytes.source(path) |> scalaz.stream.text.utf8Decode
+    def source(key: Key): Process[Task, String] =
+      bytes.source(key) |> scalaz.stream.text.utf8Decode
 
-    def sink(path: FilePath): Sink[Task, String] =
-      bytes.sink(path).map(_.contramap(s => ByteVector.view(s.getBytes("UTF-8"))))
+    def sink(key: Key): Sink[Task, String] =
+      bytes.sink(key).map(_.contramap(s => ByteVector.view(s.getBytes("UTF-8"))))
   }
 
   val lines: StoreLines[ResultTIO] = new StoreLines[ResultTIO] {
-    def read(path: FilePath, codec: Codec): ResultT[IO, List[String]] =
-      strings.read(path, codec).map(_.lines.toList)
+    def read(key: Key, codec: Codec): ResultT[IO, List[String]] =
+      strings.read(key, codec).map(_.lines.toList)
 
-    def write(path: FilePath, data: List[String], codec: Codec): ResultT[IO, Unit] =
-      strings.write(path, Lists.prepareForFile(data), codec)
+    def write(key: Key, data: List[String], codec: Codec): ResultT[IO, Unit] =
+      strings.write(key, Lists.prepareForFile(data), codec)
 
-    def source(path: FilePath, codec: Codec): Process[Task, String] =
-      scalaz.stream.io.linesR(FileSystem.get(conf).open(root </> path))(codec)
+    def source(key: Key, codec: Codec): Process[Task, String] =
+      scalaz.stream.io.linesR(FileSystem.get(conf).open(root </> keyToFilePath(key)))(codec)
 
-    def sink(path: FilePath, codec: Codec): Sink[Task, String] =
-      bytes.sink(path).map(_.contramap(s => ByteVector.view(s"$s\n".getBytes(codec.name))))
+    def sink(key: Key, codec: Codec): Sink[Task, String] =
+      bytes.sink(key).map(_.contramap(s => ByteVector.view(s"$s\n".getBytes(codec.name))))
   }
 
   val linesUtf8: StoreLinesUtf8[ResultTIO] = new StoreLinesUtf8[ResultTIO] {
-    def read(path: FilePath): ResultT[IO, List[String]] =
-      lines.read(path, Codec.UTF8)
+    def read(key: Key): ResultT[IO, List[String]] =
+      lines.read(key, Codec.UTF8)
 
-    def write(path: FilePath, data: List[String]): ResultT[IO, Unit] =
-      lines.write(path, data, Codec.UTF8)
+    def write(key: Key, data: List[String]): ResultT[IO, Unit] =
+      lines.write(key, data, Codec.UTF8)
 
-    def source(path: FilePath): Process[Task, String] =
-      lines.source(path, Codec.UTF8)
+    def source(key: Key): Process[Task, String] =
+      lines.source(key, Codec.UTF8)
 
-    def sink(path: FilePath): Sink[Task, String] =
-      lines.sink(path, Codec.UTF8)
+    def sink(key: Key): Sink[Task, String] =
+      lines.sink(key, Codec.UTF8)
   }
 
-  def withInputStreamValue[A](path: FilePath)(f: InputStream => ResultT[IO, A]): ResultT[IO, A] =
-    hdfs { Hdfs.readWith(root </> path, f) }
+  def withInputStreamValue[A](key: Key)(f: InputStream => ResultT[IO, A]): ResultT[IO, A] =
+    hdfs { Hdfs.readWith(root </> keyToFilePath(key), f) }
 
   val unsafe: StoreUnsafe[ResultTIO] = new StoreUnsafe[ResultTIO] {
-    def withInputStream(path: FilePath)(f: InputStream => ResultT[IO, Unit]): ResultT[IO, Unit] =
-      withInputStreamValue[Unit](path)(f)
+    def withInputStream(key: Key)(f: InputStream => ResultT[IO, Unit]): ResultT[IO, Unit] =
+      withInputStreamValue[Unit](key)(f)
 
-    def withOutputStream(path: FilePath)(f: OutputStream => ResultT[IO, Unit]): ResultT[IO, Unit] =
-      hdfs { Hdfs.writeWith(root </> path, f) }
+    def withOutputStream(key: Key)(f: OutputStream => ResultT[IO, Unit]): ResultT[IO, Unit] =
+      hdfs { Hdfs.writeWith(root </> keyToFilePath(key), f) }
   }
 
   def hdfs[A](thunk: => Hdfs[A]): ResultT[IO, A] =
@@ -155,5 +161,14 @@ case class HdfsStore(conf: Configuration, root: DirPath) extends Store[ResultTIO
 
   private implicit def filePathToPath(f: FilePath): Path = new Path(f.path)
   private implicit def dirPathToPath(d: DirPath): Path = new Path(d.path)
+
+  private def keyToFilePath(key: Key): FilePath =
+    FilePath.unsafe(key.name)
+
+  private def keyToDirPath(key: Key): DirPath =
+    DirPath.unsafe(key.name)
+
+  private def filePathToKey(path: FilePath): Key =
+    Key(path.names.map(fn => KeyName.unsafe(fn.name)).toVector)
 
 }

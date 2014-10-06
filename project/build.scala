@@ -47,6 +47,7 @@ object build extends Build {
   , cancelable := true
   , fork in test := true
   , javaOptions += "-Xmx3G"
+  , testOptions in Test += Tests.Argument(TestFrameworks.Specs2, "tracefilter", "/.*specs2.*,.*mundane.testing.*")
   )
 
   lazy val buildAssemblySettings: Seq[Settings] = Seq(
