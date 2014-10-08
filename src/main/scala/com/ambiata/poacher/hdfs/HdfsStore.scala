@@ -23,7 +23,9 @@ case class HdfsStore(conf: Configuration, root: DirPath) extends Store[ResultTIO
   def list(prefix: Key): ResultT[IO, List[Key]] =
     hdfs { Hdfs.filesystem.flatMap { fs =>
       Hdfs.globFilesRecursively(root </> keyToDirPath(prefix)).map { paths =>
-        paths.map(path => filePathToKey(FilePath.unsafe(path.toString).relativeTo(root </> keyToDirPath(prefix))))
+        paths.map { path =>
+          filePathToKey(FilePath.unsafe(path.toString).relativeTo(root </> keyToDirPath(prefix)))
+        }
       }
     }}
 
