@@ -18,7 +18,7 @@ object depend {
   val mundane   = Seq("com.ambiata"          %% "mundane-control",
                       "com.ambiata"          %% "mundane-io"     ,
                       "com.ambiata"          %% "mundane-store"  ,
-                      "com.ambiata"          %% "mundane-testing").map(_ % "1.2.1-20140929052154-396ffdf")
+                      "com.ambiata"          %% "mundane-testing").map(_ % "1.2.1-20141008023314-4dd16c5")
 
   def scoobi(version: String) = {
     val jars =

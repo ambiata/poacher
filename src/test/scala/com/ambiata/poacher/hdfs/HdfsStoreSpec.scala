@@ -24,6 +24,7 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = sequential 
   list keys                                       $list
   list all keys from a key prefix                 $listFromPrefix
   list all direct prefixes from a key prefix      $listHeadPrefixes
+  list an empty key prefix                        $listEmptyPrefix
   filter listed paths                             $filter
   find path in root (thirdish)                    $find
   find path in root (first)                       $findfirst
@@ -53,7 +54,6 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = sequential 
   read / write utf8 strings                       $utf8Strings
   read / write lines                              $lines
   read / write utf8 lines                         $utf8Lines
-
   """
 
   implicit val params =
@@ -74,8 +74,16 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = sequential 
       store.list(Key.Root / "sub") must beOkLike((_:List[Key]).toSet must_== keys.map(_.fromRoot).toSet) })
 
   def listHeadPrefixes =
-    prop((store: HdfsStore, keys: Keys) => clean(store, keys.map(_ prepend "sub")) { keys =>
-      store.listHeads(Key.Root / "sub") must beOkLike((_:List[Key]).toSet must_== keys.map(_.fromRoot.head).toSet) })
+  prop((store: HdfsStore, keys: Keys) => clean(store, keys.map(_ prepend "sub")) { keys =>
+    store.listHeads(Key.Root / "sub") must beOkLike((_:List[Key]).toSet must_== keys.map(_.fromRoot.head).toSet) })
+
+  def listEmptyPrefix =
+    prop((store: HdfsStore, keys: Keys) => clean(store, keys) { keys =>
+    val action =
+      Hdfs.mkdir(new Path(store.basePath, "sub")).run(conf) >> // create an empty directory
+      store.list(Key.Root / "sub")                             // list the prefix for keys --> should be empty
+    action must beOkLike((_:List[Key]) must beEmpty)
+  })
 
   def filter =
     prop((store: HdfsStore, keys: Keys) => clean(store, keys) { keys =>
@@ -106,7 +114,7 @@ class HdfsStoreSpec extends Specification with ScalaCheck { def is = sequential 
       keys.traverseU(key => store.existsPrefix(key.copy(components = key.components.dropRight(1)))) must beOkLike(_.forall(identity)) })
 
   def notExists =
-    prop((store: HdfsStore, keys: Keys) => store.exists(Key.Root / "i really don't exist") must beOkValue(false))
+    prop((store: HdfsStore, keys: Keys) => store.exists(Key.Root / "missing") must beOkValue(false))
 
   def delete =
     prop((store: HdfsStore, keys: Keys) => clean(store, keys) { keys =>
