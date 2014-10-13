@@ -11,8 +11,8 @@ object build extends Build {
   lazy val poacher = Project(
     id = "poacher"
   , base = file(".")
-  , settings = 
-    standardSettings ++ 
+  , settings =
+    standardSettings ++
     promulgate.library(s"com.ambiata.poacher", "ambiata-oss") ++
     Seq[Settings](libraryDependencies ++= depend.scalaz ++ depend.mundane ++ depend.scoobi(version.value) ++ depend.hadoop(version.value) ++ depend.specs2)
   )
