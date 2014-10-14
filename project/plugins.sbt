@@ -6,4 +6,4 @@ resolvers += Resolver.sonatypeRepo("releases")
 
 resolvers += Resolver.typesafeRepo("releases")
 
-addSbtPlugin("com.ambiata" % "promulgate" % "0.11.0-20140410040932-7b5bc30")
+addSbtPlugin("com.ambiata" % "promulgate" % "0.11.0-20141014013725-80c129f")
