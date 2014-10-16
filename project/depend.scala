@@ -2,8 +2,8 @@ import sbt._
 import Keys._
 
 object depend {
-  val scalaz    = Seq("org.scalaz"           %% "scalaz-core"     % "7.0.6",
-                      "org.scalaz"           %% "scalaz-effect"   % "7.0.6")
+  val scalaz    = Seq("org.scalaz"           %% "scalaz-core"     % "7.1.0",
+                      "org.scalaz"           %% "scalaz-effect"   % "7.1.0")
   val scopt     = Seq("com.github.scopt"     %% "scopt"           % "3.2.0")
   val trove     = Seq("trove"                %  "trove"           % "1.0.2")
   val joda      = Seq("joda-time"            %  "joda-time"       % "2.1",
@@ -12,13 +12,12 @@ object depend {
                       "org.specs2"           %% "specs2-junit",
                       "org.specs2"           %% "specs2-html",
                       "org.specs2"           %% "specs2-matcher-extra",
-                      "org.specs2"           %% "specs2-scalacheck").map(_ % "2.3.12")
+                      "org.specs2"           %% "specs2-scalacheck").map(_ % "2.4.5")
   val commonsio = Seq("commons-io"           %  "commons-io"      % "2.4")
   val thrift    = Seq("org.apache.thrift"    %  "libthrift"       % "0.9.1")
   val mundane   = Seq("com.ambiata"          %% "mundane-control",
                       "com.ambiata"          %% "mundane-io"     ,
-                      "com.ambiata"          %% "mundane-store"  ,
-                      "com.ambiata"          %% "mundane-testing").map(_ % "1.2.1-20141009231713-6cb5d9b")
+                      "com.ambiata"          %% "mundane-testing").map(_ % "1.2.1-20141016221505-82db433")
 
   def scoobi(version: String) = {
     val jars =
