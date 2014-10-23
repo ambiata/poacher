@@ -39,6 +39,7 @@ object build extends Build {
     , javacOptions ++= Seq("-source", "1.6", "-target", "1.6")
     , maxErrors := 20
     , scalacOptions ++= Seq("-target:jvm-1.6", "-deprecation", "-unchecked", "-feature", "-language:_", "-Xlint", "-Xfatal-warnings", "-Yinline-warnings")
+    , scalacOptions in (Compile,doc) := Seq("-language:_", "-feature")
   )
 
   lazy val testingSettings: Seq[Settings] = Seq(
