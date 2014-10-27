@@ -17,7 +17,7 @@ object depend {
   val thrift    = Seq("org.apache.thrift"    %  "libthrift"       % "0.9.1" excludeAll ExclusionRule(organization = "org.apache.httpcomponents"))
   val mundane   = Seq("com.ambiata"          %% "mundane-control",
                       "com.ambiata"          %% "mundane-io"     ,
-                      "com.ambiata"          %% "mundane-testing").map(_ % "1.2.1-20141016221505-82db433")
+                      "com.ambiata"          %% "mundane-testing").map(_ % "1.2.1-20141024050817-e2b01b2")
 
   def scoobi(version: String) = {
     val jars =
