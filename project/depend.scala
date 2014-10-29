@@ -12,12 +12,13 @@ object depend {
                       "org.specs2"           %% "specs2-junit",
                       "org.specs2"           %% "specs2-html",
                       "org.specs2"           %% "specs2-matcher-extra",
-                      "org.specs2"           %% "specs2-scalacheck").map(_ % "2.4.5")
+                      "org.specs2"           %% "specs2-scalacheck").map(_ % "2.4.5").map(_ % "test")
   val commonsio = Seq("commons-io"           %  "commons-io"      % "2.4")
   val thrift    = Seq("org.apache.thrift"    %  "libthrift"       % "0.9.1" excludeAll ExclusionRule(organization = "org.apache.httpcomponents"))
+  val mundaneVersion = "1.2.1-20141024050817-e2b01b2"
   val mundane   = Seq("com.ambiata"          %% "mundane-control",
-                      "com.ambiata"          %% "mundane-io"     ,
-                      "com.ambiata"          %% "mundane-testing").map(_ % "1.2.1-20141024050817-e2b01b2")
+                      "com.ambiata"          %% "mundane-io").map(_ % mundaneVersion) ++
+                  Seq("com.ambiata"          %% "mundane-testing" % mundaneVersion % "test")
 
   def scoobi(version: String) = {
     val jars =
