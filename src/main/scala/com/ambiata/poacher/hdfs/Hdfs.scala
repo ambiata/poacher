@@ -105,7 +105,7 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
     filesystem.map(fs => fs.isDirectory(p))
 
   def mustExist(p: Path): Hdfs[Unit] =
-    mustexistWithMessage(p, s"$p doesn't exist!")
+    mustExistWithMessage(p, s"$p doesn't exist!")
 
   def mustExistWithMessage(p: Path, error: String): Hdfs[Unit] =
     exists(p).flatMap(e => if(e) Hdfs.ok(()) else Hdfs.fail(error))
