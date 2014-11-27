@@ -104,8 +104,11 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
   def isDirectory(p: Path): Hdfs[Boolean] =
     filesystem.map(fs => fs.isDirectory(p))
 
-  def mustexist(p: Path): Hdfs[Unit] =
-    exists(p).flatMap(e => if(e) Hdfs.ok(()) else Hdfs.fail(s"$p doesn't exist!"))
+  def mustExist(p: Path): Hdfs[Unit] =
+    mustexistWithMessage(p, s"$p doesn't exist!")
+
+  def mustExistWithMessage(p: Path, error: String): Hdfs[Unit] =
+    exists(p).flatMap(e => if(e) Hdfs.ok(()) else Hdfs.fail(error))
 
   def globDirs(p: Path, glob: String = "*"): Hdfs[List[Path]] =
     filesystem.map(fs =>
