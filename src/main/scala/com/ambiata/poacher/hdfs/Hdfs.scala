@@ -151,7 +151,7 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
   }
 
   def readWith[A](p: Path, f: InputStream => ResultT[IO, A], glob: String = "*"): Hdfs[A] = for {
-    _     <- mustexist(p)
+    _     <- mustExist(p)
     paths <- globFiles(p, glob)
     a     <- filesystem.flatMap(fs => {
       if(!paths.isEmpty) {
@@ -175,7 +175,7 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
     Hdfs.globFiles(p, glob).flatMap(_.map(Hdfs.readLines).sequenceU.map(_.toIterator.flatten))
 
   def writeWith[A](p: Path, f: OutputStream => ResultT[IO, A]): Hdfs[A] = for {
-    _ <- mustexist(p) ||| mkdir(p.getParent).void
+    _ <- mustExist(p) ||| mkdir(p.getParent).void
     a <- filesystem.flatMap(fs =>
       Hdfs.fromResultTIO(ResultT.using(ResultT.safe[IO, OutputStream](fs.create(p))) { out =>
         f(out)
