@@ -30,7 +30,7 @@ object build extends Build {
   , version in ThisBuild := s"""1.0.0-${Option(System.getenv("HADOOP_VERSION")).getOrElse("cdh5")}"""
   , organization := "com.ambiata"
   , scalaVersion := "2.11.2"
-  , crossScalaVersions := Seq("2.10.4", "2.11.2")
+  , crossScalaVersions := Seq("2.11.2")
   , fork in run  := true
   )
 
