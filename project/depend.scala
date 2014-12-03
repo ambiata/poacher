@@ -20,6 +20,8 @@ object depend {
                       "com.ambiata"          %% "mundane-io").map(_ % mundaneVersion) ++
                   Seq("com.ambiata"          %% "mundane-testing" % mundaneVersion % "test")
 
+  val shapeless = Seq("com.chuusai"          %% "shapeless"       % "2.0.0")
+
   def scoobi(version: String) = {
     val jars =
       if (version.contains("cdh4"))      Seq("com.nicta" %% "scoobi"                    % "0.9.0-cdh4-20141017043441-0c9fb18",
