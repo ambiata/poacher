@@ -38,7 +38,7 @@ Committer
     commit((ctx, target) =>
       Hdfs.mkdir(target) >> writeFile(new Path(ctx.output, "path1/f1"), "test1"),
       (target, _) => target, List("f1" -> "test1")
-    ).toEither must beRight
+    ).toEither must beLeft
 
   def nestedDir =
     commit((ctx, _) => writeFile(new Path(ctx.output, "path1/f1/f2"), "test1"),

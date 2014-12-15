@@ -22,6 +22,11 @@ object Committer {
    */
   def commit(context: MrContext, mapping: String => Path, cleanup: Boolean): Hdfs[Unit] = for {
     paths <- Hdfs.globPaths(context.output, "*").filterHidden
+    // The expected outputs should _never_ exist to avoid corrupt data
+    _     <- paths.traverse { p =>
+      val name = mapping(p.getName)
+      Hdfs.mustNotExistWithMessage(name, s"Attempting to commit to a path that already exists: '${name.toString}'")
+    }
     _     <- paths.traverse(p => for {
       t <- Hdfs.value(mapping(p.getName))
       d <- Hdfs.isDirectory(p)
