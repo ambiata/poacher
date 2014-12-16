@@ -24,11 +24,14 @@ case class DistCache(base: Path, contextId: ContextId) {
      of DistCache and is maintained through the configuration object. This fails _hard_ if
      anything goes wrong. Use DistCache#pop in the setup method of Mapper or Reducer to
      recover data. */
-  def push(job: Job, key: DistCache.Key, bytes: Array[Byte]): Unit = {
+  def push(job: Job, key: DistCache.Key, bytes: Array[Byte]): Unit =
+    pushView(job, key, bytes, bytes.length)
+
+  def pushView(job: Job, key: DistCache.Key, bytes: Array[Byte], length: Int): Unit = {
     val nskey = key.namespaced(contextId.value)
     val tmp = s"${base}/${nskey.combined}"
     val uri = new URI(tmp + "#" + nskey.combined)
-    (Hdfs.writeWith(new Path(tmp), Streams.writeBytes(_, bytes)) >> Hdfs.safe {
+    (Hdfs.writeWith(new Path(tmp), out => ResultT.safe(out.write(bytes, 0, length))) >> Hdfs.safe {
       addCacheFile(uri, job)
     }).run(job.getConfiguration).run.unsafePerformIO match {
       case Ok(_) =>

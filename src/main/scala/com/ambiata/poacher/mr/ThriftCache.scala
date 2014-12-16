@@ -18,8 +18,10 @@ case class ThriftCache(base: Path, id: ContextId) {
 
   /** Push a thrift data-type to the distributed cache for this job, under the
      specified key. This fails _hard_ if anything goes wrong. */
-  def push[A](job: Job, key: ThriftCache.Key, a: A)(implicit ev: A <:< ThriftLike): Unit =
-    distCache.push(job, DistCache.Key(key.value), serializer.toBytes(a))
+  def push[A](job: Job, key: ThriftCache.Key, a: A)(implicit ev: A <:< ThriftLike): Unit = {
+    val bytes = serializer.toByteViewUnsafe(a)
+    distCache.pushView(job, DistCache.Key(key.value), bytes.bytes, bytes.length)
+  }
 
   /** Pop a thrift data-type from the distributed job, it is assumed that this is
      only run by map or reduce tasks where to the cache for this job where a call

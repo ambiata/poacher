@@ -21,7 +21,7 @@ public class TSerializerCopy {
     /**
      * This is the byte array that data is actually serialized into
      */
-    private final ByteArrayOutputStream baos_ = new ByteArrayOutputStream();
+    private final ByteArrayOutputStreamCopy baos_ = new ByteArrayOutputStreamCopy();
 
     /**
      * This transport wraps that byte array
@@ -65,6 +65,20 @@ public class TSerializerCopy {
     }
 
     /**
+     * Serialize the Thrift object into a byte array. The process is simple,
+     * just clear the byte array output, write the object into it, and grab the
+     * raw bytes.
+     *
+     * @param base The object to serialize
+     * @return Serialized object in byte[] format wrapped in a {@link ByteVector}
+     */
+    public ByteView serializeToView(TBase base) throws TException {
+        baos_.reset();
+        base.write(protocol_);
+        return baos_.toByteVector();
+    }
+
+    /**
      * Serialize the Thrift object into a Java string, using a specified
      * character set for encoding.
      *
@@ -89,5 +103,13 @@ public class TSerializerCopy {
      */
     public String toString(TBase base) throws TException {
         return new String(serialize(base));
+    }
+
+    /** Just so we have access to the protected buf and count fields */
+    private static class ByteArrayOutputStreamCopy extends ByteArrayOutputStream {
+
+        public ByteView toByteVector() {
+            return new ByteView(buf, count);
+        }
     }
 }
