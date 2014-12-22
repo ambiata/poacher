@@ -3,7 +3,7 @@ package com.ambiata.poacher.hdfs
 import org.specs2.Specification
 import org.apache.hadoop.fs.Path
 import java.io.File
-import com.ambiata.mundane.testing.ResultTIOMatcher._
+import com.ambiata.mundane.testing.RIOMatcher._
 import org.apache.hadoop.conf.Configuration
 
 class HdfsSpec extends Specification { def is = s2"""

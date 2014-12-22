@@ -1,7 +1,7 @@
 package com.ambiata.poacher.hdfs
 
 import com.ambiata.poacher.hdfs.TemporaryConfiguration._
-import com.ambiata.mundane.testing.ResultTIOMatcher._
+import com.ambiata.mundane.testing.RIOMatcher._
 import org.specs2._
 import org.apache.hadoop.fs.Path
 import java.io.File

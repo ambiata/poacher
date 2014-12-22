@@ -11,8 +11,8 @@ import com.ambiata.mundane.control._
 import com.ambiata.mundane.io.{BytesQuantity, FilePath, Streams, MemoryConversions}
 import MemoryConversions._
 
-case class Hdfs[A](action: ActionT[IO, Unit, Configuration, A]) {
-  def run(conf: Configuration): ResultTIO[A] =
+case class Hdfs[A](action: AIO[Unit, Configuration, A]) {
+  def run(conf: Configuration): RIO[A] =
     action.executeT(conf)
 
   def map[B](f: A => B): Hdfs[B] =
@@ -65,7 +65,7 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
   def fromIO[A](io: IO[A]): Hdfs[A] =
     Hdfs(super.fromIO(io))
 
-  def fromResultTIO[A](res: ResultTIO[A]): Hdfs[A] =
+  def fromRIO[A](res: RIO[A]): Hdfs[A] =
     Hdfs(super.fromIOResult(res.run))
 
   def filesystem: Hdfs[FileSystem] =
@@ -156,13 +156,13 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
     (new Path(basePath.mkString("/")), if (glob.isEmpty) "*" else glob.mkString("/"))
   }
 
-  def readWith[A](p: Path, f: InputStream => ResultT[IO, A], glob: String = "*"): Hdfs[A] = for {
+  def readWith[A](p: Path, f: InputStream => RIO[A], glob: String = "*"): Hdfs[A] = for {
     _     <- mustExist(p)
     paths <- globFiles(p, glob)
     a     <- filesystem.flatMap(fs => {
       if(!paths.isEmpty) {
         val is = paths.map(fs.open).reduce[InputStream]((a, b) => new SequenceInputStream(a, b))
-        Hdfs.fromResultTIO(ResultT.using(ResultT.safe[IO, InputStream](is)) { in =>
+        Hdfs.fromRIO(ResultT.using(ResultT.safe[IO, InputStream](is)) { in =>
           f(is)
         })
       } else {
@@ -180,10 +180,10 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
   def globLines(p: Path, glob: String = "*"): Hdfs[Iterator[String]] =
     Hdfs.globFiles(p, glob).flatMap(_.map(Hdfs.readLines).sequenceU.map(_.toIterator.flatten))
 
-  def writeWith[A](p: Path, f: OutputStream => ResultT[IO, A]): Hdfs[A] = for {
+  def writeWith[A](p: Path, f: OutputStream => RIO[A]): Hdfs[A] = for {
     _ <- mustExist(p) ||| mkdir(p.getParent).void
     a <- filesystem.flatMap(fs =>
-      Hdfs.fromResultTIO(ResultT.using(ResultT.safe[IO, OutputStream](fs.create(p))) { out =>
+      Hdfs.fromRIO(ResultT.using(ResultT.safe[IO, OutputStream](fs.create(p))) { out =>
         f(out)
       }))
   } yield a
