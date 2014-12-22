@@ -14,7 +14,7 @@ import hdfs._
 
 case class ScoobiAction[A](action: ActionT[IO, Unit, ScoobiConfiguration, A]) {
 
-  def run(conf: ScoobiConfiguration): ResultTIO[A] =
+  def run(conf: ScoobiConfiguration): RIO[A] =
     action.executeT(conf)
 
   def map[B](f: A => B): ScoobiAction[B] =
@@ -68,12 +68,12 @@ object ScoobiAction extends ActionTSupport[IO, Unit, ScoobiConfiguration] {
   def fromIO[A](io: IO[A]): ScoobiAction[A] =
     ScoobiAction(super.fromIO(io))
 
-  def fromResultTIO[A](res: ResultTIO[A]): ScoobiAction[A] =
+  def fromRIO[A](res: RIO[A]): ScoobiAction[A] =
     ScoobiAction(super.fromIOResult(res.run))
 
   def fromHdfs[A](action: Hdfs[A]): ScoobiAction[A] = for {
     sc <- ScoobiAction.scoobiConfiguration
-    a  <- ScoobiAction.fromResultTIO(action.run(sc.configuration))
+    a  <- ScoobiAction.fromRIO(action.run(sc.configuration))
   } yield a
 
   def filesystem: ScoobiAction[FileSystem] =
