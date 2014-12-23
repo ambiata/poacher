@@ -25,7 +25,12 @@ object Committer {
     // The expected outputs should _never_ exist to avoid corrupt data
     _     <- paths.traverse { p =>
       val name = mapping(p.getName)
-      Hdfs.mustNotExistWithMessage(name, s"Attempting to commit to a path that already exists: '${name.toString}'")
+      for {
+        e <- Hdfs.exists(name)
+        l <- if (e) Hdfs.globPaths(name).filterHidden
+             else nil.pure[Hdfs]
+        _ <- Hdfs.unless(l.isEmpty)(Hdfs.fail(s"Attempting to commit to a path that already contains data: '${name.toString}'"))
+      } yield ()
     }
     _     <- paths.traverse(p => for {
       t <- Hdfs.value(mapping(p.getName))

@@ -17,7 +17,8 @@ Committer
 
   Commit multiple dirs (targets don't exist)    $e1
   Commit files fails                            $e2
-  target dir exists                             $e3
+  Target dir exists                             $exists
+  Target dir exists with hidden files only      $hidden
   Commit nested dirs                            $nestedDir
 
 """
@@ -34,11 +35,17 @@ Committer
     commit((ctx, _) => writeFile(new Path(ctx.output, "f1"), "test1"),
       (target, _) => target, Nil).toEither must beLeft
 
-  def e3 =
+  def exists =
     commit((ctx, target) =>
-      Hdfs.mkdir(target) >> writeFile(new Path(ctx.output, "path1/f1"), "test1"),
+      Hdfs.mkdir(target) >> writeFile(new Path(ctx.output, "path1/f1"), "test1") >> writeFile(new Path(target, "path1/f1"), "test1"),
       (target, _) => target, List("f1" -> "test1")
     ).toEither must beLeft
+
+  def hidden =
+    commit((ctx, target) =>
+      Hdfs.mkdir(target) >> writeFile(new Path(target, "path1/.f1"), "test1"),
+      (target, _) => target, nil
+    ).toEither must beRight
 
   def nestedDir =
     commit((ctx, _) => writeFile(new Path(ctx.output, "path1/f1/f2"), "test1"),
