@@ -26,7 +26,7 @@ class ThriftDerserializationBehaviourSpec extends Specification with ScalaCheck 
     val bytes = serialiser.toBytes(f1.toThrift)
     // We want to compare deserialisation to one "dirty" (_and_ different) thrift object to a cleared one
     serialiser.fromBytesUnsafe(f2.toThrift, bytes) ==== serialiser.fromBytesUnsafe(f3.toThrift, bytes)
-  }).set(minTestsOk = 1)
+  }).set(minTestsOk = 3)
 
   def clearUnsafe = prop((f1: KeyValue, f2: KeyValue, f3: KeyValue, t: Int) => {
     val serialiser = new TSerializer(new TCompactProtocol.Factory)
@@ -39,7 +39,7 @@ class ThriftDerserializationBehaviourSpec extends Specification with ScalaCheck 
     deserialiser.deserialize(f3.toThrift, bytes)
     // Normally we would expect these to be the same, but we have set an optional field that was blank in f1
     f2.toThrift !=== f3.toThrift
-  }).set(minTestsOk = 1)
+  }).set(minTestsOk = 3)
 
   def size = prop((kv: KeyValue, option: Int) => {
     val serialiser = ThriftSerialiser()
