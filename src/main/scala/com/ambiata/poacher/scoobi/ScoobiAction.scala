@@ -1,7 +1,6 @@
 package com.ambiata.poacher
 package scoobi
 
-import com.ambiata.mundane.control.ActionT
 import com.ambiata.mundane.control._
 import com.nicta.scoobi.core.ScoobiConfiguration
 import com.nicta.scoobi.core.ScoobiConfiguration
@@ -12,25 +11,21 @@ import com.nicta.scoobi.core.ScoobiConfiguration
 import org.apache.hadoop.fs.{Path, FileSystem}
 import hdfs._
 
-case class ScoobiAction[A](action: ActionT[IO, Unit, ScoobiConfiguration, A]) {
-
-  def run(conf: ScoobiConfiguration): RIO[A] =
-    action.executeT(conf)
-
+case class ScoobiAction[A](run: ScoobiConfiguration => RIO[A]) {
   def map[B](f: A => B): ScoobiAction[B] =
-    ScoobiAction(action.map(f))
+    ScoobiAction(run(_).map(f))
 
   def flatMap[B](f: A => ScoobiAction[B]): ScoobiAction[B] =
-    ScoobiAction(action.flatMap(a => f(a).action))
+    ScoobiAction(c => run(c).flatMap(a => f(a).run(c)))
 
   def mapError(f: These[String, Throwable] => These[String, Throwable]): ScoobiAction[A] =
-    ScoobiAction(action.mapError(f))
+    ScoobiAction(run(_).mapError(f))
 
   def mapErrorString(f: String => String): ScoobiAction[A] =
-    ScoobiAction(action.mapError(_.leftMap(f)))
+    ScoobiAction(run(_).mapError(_.leftMap(f)))
 
   def |||(other: ScoobiAction[A]): ScoobiAction[A] =
-    ScoobiAction(action ||| other.action)
+    ScoobiAction(c => run(c) ||| other.run(c))
 
   def flatten[B](implicit ev: A <:< ScoobiAction[B]): ScoobiAction[B] =
     flatMap(a => ev(a))
@@ -43,19 +38,19 @@ case class ScoobiAction[A](action: ActionT[IO, Unit, ScoobiConfiguration, A]) {
 }
 
 
-object ScoobiAction extends ActionTSupport[IO, Unit, ScoobiConfiguration] {
+object ScoobiAction {
 
   def value[A](a: A): ScoobiAction[A] =
-    ScoobiAction(super.ok(a))
+    ScoobiAction(_ => RIO.ok(a))
 
   def ok[A](a: A): ScoobiAction[A] =
     value(a)
 
   def safe[A](a: => A): ScoobiAction[A] =
-    ScoobiAction(super.safe(a))
+    ScoobiAction(_ => RIO.safe(a))
 
   def fail[A](e: String): ScoobiAction[A] =
-    ScoobiAction(super.fail(e))
+    ScoobiAction(_ => RIO.fail(e))
 
   def fromDisjunction[A](d: String \/ A): ScoobiAction[A] = d match {
     case -\/(e) => fail(e)
@@ -66,10 +61,10 @@ object ScoobiAction extends ActionTSupport[IO, Unit, ScoobiConfiguration] {
     fromDisjunction(v.disjunction)
 
   def fromIO[A](io: IO[A]): ScoobiAction[A] =
-    ScoobiAction(super.fromIO(io))
+    ScoobiAction(_ => RIO.fromIO(io))
 
   def fromRIO[A](res: RIO[A]): ScoobiAction[A] =
-    ScoobiAction(super.fromIOResult(res.run))
+    ScoobiAction(_ => res)
 
   def fromHdfs[A](action: Hdfs[A]): ScoobiAction[A] = for {
     sc <- ScoobiAction.scoobiConfiguration
@@ -77,18 +72,18 @@ object ScoobiAction extends ActionTSupport[IO, Unit, ScoobiConfiguration] {
   } yield a
 
   def filesystem: ScoobiAction[FileSystem] =
-    ScoobiAction(reader((sc: ScoobiConfiguration) => FileSystem.get(sc.configuration)))
+    ScoobiAction(sc => RIO.safe(FileSystem.get(sc.configuration)))
 
   def scoobiConfiguration: ScoobiAction[ScoobiConfiguration] =
-    ScoobiAction(reader(identity))
+    ScoobiAction(_.pure[RIO])
 
   def scoobiJob[A](f: ScoobiConfiguration => A): ScoobiAction[A] = for {
     sc <- ScoobiAction.scoobiConfiguration
     a  <- ScoobiAction.safe(f(sc))
   } yield a
 
-  def log(message: String) =
-    fromIO(IO(println(message)))
+  def log(message: String): ScoobiAction[Unit] =
+    ScoobiAction(_ => RIO.putStrLn(message))
 
   def unless[A](condition: Boolean)(action: ScoobiAction[A]): ScoobiAction[Unit] =
     if (!condition) action.map(_ => ()) else ScoobiAction.ok(())
