@@ -15,7 +15,7 @@ object depend {
                       "org.specs2"           %% "specs2-scalacheck").map(_ % "2.4.5").map(_ % "test")
   val commonsio = Seq("commons-io"           %  "commons-io"      % "2.4")
   val thrift    = Seq("org.apache.thrift"    %  "libthrift"       % "0.9.1" excludeAll ExclusionRule(organization = "org.apache.httpcomponents"))
-  val mundaneVersion = "1.2.1-20141222232537-2af3aad"
+  val mundaneVersion = "1.2.1-20141230225616-50fc792"
   val mundane   = Seq("com.ambiata"          %% "mundane-control",
                       "com.ambiata"          %% "mundane-io").map(_ % mundaneVersion) ++
                   Seq("com.ambiata"          %% "mundane-testing" % mundaneVersion % "test")

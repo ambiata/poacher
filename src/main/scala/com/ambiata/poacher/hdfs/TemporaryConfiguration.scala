@@ -22,6 +22,6 @@ object TemporaryConfiguration {
   }
 
   def withConfX[A](f: Configuration => A): RIO[A] = TemporaryDirPath.withDirPath { dir =>
-    withConf(conf => ResultT.ok[IO, A](f(conf)))
+    withConf(conf => RIO.ok[A](f(conf)))
   }
 }

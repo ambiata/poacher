@@ -11,24 +11,21 @@ import com.ambiata.mundane.control._
 import com.ambiata.mundane.io.{BytesQuantity, FilePath, Streams, MemoryConversions}
 import MemoryConversions._
 
-case class Hdfs[A](action: AIO[Unit, Configuration, A]) {
-  def run(conf: Configuration): RIO[A] =
-    action.executeT(conf)
-
+case class Hdfs[A](run: Configuration => RIO[A]) {
   def map[B](f: A => B): Hdfs[B] =
-    Hdfs(action.map(f))
+    Hdfs(run(_).map(f))
 
   def flatMap[B](f: A => Hdfs[B]): Hdfs[B] =
-    Hdfs(action.flatMap(a => f(a).action))
+    Hdfs(c => run(c).flatMap(a => f(a).run(c)))
 
   def mapError(f: These[String, Throwable] => These[String, Throwable]): Hdfs[A] =
-    Hdfs(action.mapError(f))
+    Hdfs(run(_).mapError(f))
 
   def mapErrorString(f: String => String): Hdfs[A] =
-    Hdfs(action.mapError(_.leftMap(f)))
+    Hdfs(run(_).mapError(_.leftMap(f)))
 
   def |||(other: Hdfs[A]): Hdfs[A] =
-    Hdfs(action ||| other.action)
+    Hdfs(c => run(c) ||| other.run(c))
 
   def filterHidden(implicit ev: A <:< List[Path]): Hdfs[List[Path]] =
     map(_.filter(p => !p.getName.startsWith("_") && !p.getName.startsWith(".")))
@@ -37,19 +34,19 @@ case class Hdfs[A](action: AIO[Unit, Configuration, A]) {
     Hdfs.unless(condition)(this)
 }
 
-object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
+object Hdfs {
 
   def value[A](a: A): Hdfs[A] =
-    Hdfs(super.ok(a))
+    Hdfs(_ => RIO.ok(a))
 
   def ok[A](a: A): Hdfs[A] =
     value(a)
 
   def safe[A](a: => A): Hdfs[A] =
-    Hdfs(super.safe(a))
+    Hdfs(_ => RIO.safe(a))
 
   def fail[A](e: String): Hdfs[A] =
-    Hdfs(super.fail(e))
+    Hdfs(_ => RIO.fail(e))
 
   def fromDisjunction[A](d: String \/ A): Hdfs[A] = d match {
     case -\/(e) => fail(e)
@@ -63,19 +60,19 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
     o.map(value).getOrElse(fail(err))
 
   def fromIO[A](io: IO[A]): Hdfs[A] =
-    Hdfs(super.fromIO(io))
+    Hdfs(_ => RIO.fromIO(io))
 
   def fromRIO[A](res: RIO[A]): Hdfs[A] =
-    Hdfs(super.fromIOResult(res.run))
+    Hdfs(_ => res)
 
   def filesystem: Hdfs[FileSystem] =
-    Hdfs(reader((c: Configuration) => FileSystem.get(c)))
+    Hdfs(c => RIO.safe(FileSystem.get(c)))
 
   def filecontext: Hdfs[FileContext] =
-    Hdfs(reader((c: Configuration) => FileContext.getFileContext(c)))
+    Hdfs(c => RIO.safe(FileContext.getFileContext(c)))
 
   def configuration: Hdfs[Configuration] =
-    Hdfs(reader(identity))
+    Hdfs(_.pure[RIO])
 
   def exists(p: Path): Hdfs[Boolean] =
     filesystem.map(fs => fs.exists(p))
@@ -162,7 +159,7 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
     a     <- filesystem.flatMap(fs => {
       if(!paths.isEmpty) {
         val is = paths.map(fs.open).reduce[InputStream]((a, b) => new SequenceInputStream(a, b))
-        Hdfs.fromRIO(ResultT.using(ResultT.safe[IO, InputStream](is)) { in =>
+        Hdfs.fromRIO(RIO.using(RIO.safe[InputStream](is)) { in =>
           f(is)
         })
       } else {
@@ -183,7 +180,7 @@ object Hdfs extends ActionTSupport[IO, Unit, Configuration] {
   def writeWith[A](p: Path, f: OutputStream => RIO[A]): Hdfs[A] = for {
     _ <- mustExist(p) ||| mkdir(p.getParent).void
     a <- filesystem.flatMap(fs =>
-      Hdfs.fromRIO(ResultT.using(ResultT.safe[IO, OutputStream](fs.create(p))) { out =>
+      Hdfs.fromRIO(RIO.using(RIO.safe[OutputStream](fs.create(p))) { out =>
         f(out)
       }))
   } yield a
