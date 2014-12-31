@@ -34,7 +34,7 @@ case class DistCache(base: Path, contextId: ContextId) {
     val uri = new URI(tmp + "#" + nskey.combined)
     (Hdfs.writeWith(new Path(tmp), out => RIO.safe(out.write(bytes, 0, length))) >> Hdfs.safe {
       addCacheFile(uri, job)
-    }).run(job.getConfiguration).run.unsafePerformIO match {
+    }).run(job.getConfiguration).unsafePerformIO match {
       case Ok(_) =>
         ()
       case Error(e) =>
@@ -48,7 +48,7 @@ case class DistCache(base: Path, contextId: ContextId) {
      _hard_ if anything goes wrong. */
   def pop[A](conf: Configuration, key: DistCache.Key, f: Array[Byte] => String \/ A): A = {
     val nskey = key.namespaced(contextId.value)
-    Files.readBytes(FilePath.unsafe(Compatibility.findCacheFile(conf, nskey))).flatMap(bytes => RIO.safe { f(bytes) }).run.unsafePerformIO match {
+    Files.readBytes(FilePath.unsafe(Compatibility.findCacheFile(conf, nskey))).flatMap(bytes => RIO.safe { f(bytes) }).unsafePerformIO match {
       case Ok(\/-(a)) =>
         a
       case Ok(-\/(s)) =>

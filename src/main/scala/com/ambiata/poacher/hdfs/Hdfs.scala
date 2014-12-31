@@ -35,6 +35,8 @@ case class Hdfs[A](run: Configuration => RIO[A]) {
 }
 
 object Hdfs {
+  def addFinalizer(finalizer: Hdfs[Unit]): Hdfs[Unit] =
+    Hdfs(c => RIO.addFinalizer(Finalizer(finalizer.run(c))))
 
   def value[A](a: A): Hdfs[A] =
     Hdfs(_ => RIO.ok(a))
@@ -177,6 +179,14 @@ object Hdfs {
   def globLines(p: Path, glob: String = "*"): Hdfs[Iterator[String]] =
     Hdfs.globFiles(p, glob).flatMap(_.map(Hdfs.readLines).sequenceU.map(_.toIterator.flatten))
 
+  def write(p: Path, content: String): Hdfs[Unit] = for {
+    _ <- Hdfs.safe(mkdir(p.getParent)).void
+    f <- filesystem
+    _ <- Hdfs.fromRIO(RIO.using(RIO.safe[OutputStream](f.create(p))) { out =>
+      Streams.write(out, content, "UTF-8")
+    })
+  } yield ()
+
   def writeWith[A](p: Path, f: OutputStream => RIO[A]): Hdfs[A] = for {
     _ <- mustExist(p) ||| mkdir(p.getParent).void
     a <- filesystem.flatMap(fs =>
@@ -236,10 +246,10 @@ object Hdfs {
   } yield r
 
   def delete(p: Path): Hdfs[Unit] =
-    filesystem.map(fs => fs.delete(p, false))
+    filesystem.map(_.delete(p, false)).void
 
   def deleteAll(p: Path): Hdfs[Unit] =
-    filesystem.map(fs => fs.delete(p, true))
+    filesystem.map(_.delete(p, true)).void
 
   def log(message: String) =
     fromIO(IO(println(message)))
@@ -260,4 +270,10 @@ object Hdfs {
     def point[A](v: => A) = ok(v)
     def bind[A, B](m: Hdfs[A])(f: A => Hdfs[B]) = m.flatMap(f)
   }
+
+  def putStrLn(msg: String): Hdfs[Unit] =
+    Hdfs(_ => RIO.putStrLn(msg))
+
+  def unit: Hdfs[Unit] =
+    Hdfs(_ => RIO.unit)
 }
