@@ -28,6 +28,7 @@ object build extends Build {
   lazy val projectSettings: Seq[Settings] = Seq(
     name := "poacher"
   , version in ThisBuild := s"""1.0.0-${Option(System.getenv("HADOOP_VERSION")).getOrElse("cdh5")}"""
+  , unmanagedSourceDirectories in Compile += (sourceDirectory in Compile).value / s"scala-${Option(System.getenv("HADOOP_VERSION")).getOrElse("cdh5")}"
   , organization := "com.ambiata"
   , scalaVersion := "2.11.2"
   , crossScalaVersions := Seq("2.11.2")
