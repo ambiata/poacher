@@ -1,5 +1,6 @@
 package com.ambiata.poacher.mr
 
+import com.ambiata.poacher.Compatibility
 import com.ambiata.poacher.hdfs._
 import com.ambiata.mundane.control._
 import com.ambiata.mundane.io._
@@ -47,7 +48,7 @@ case class DistCache(base: Path, contextId: ContextId) {
      _hard_ if anything goes wrong. */
   def pop[A](conf: Configuration, key: DistCache.Key, f: Array[Byte] => String \/ A): A = {
     val nskey = key.namespaced(contextId.value)
-    Files.readBytes(FilePath.unsafe(findCacheFile(conf, nskey))).flatMap(bytes => RIO.safe { f(bytes) }).run.unsafePerformIO match {
+    Files.readBytes(FilePath.unsafe(Compatibility.findCacheFile(conf, nskey))).flatMap(bytes => RIO.safe { f(bytes) }).run.unsafePerformIO match {
       case Ok(\/-(a)) =>
         a
       case Ok(-\/(s)) =>
@@ -60,13 +61,6 @@ case class DistCache(base: Path, contextId: ContextId) {
     import com.nicta.scoobi.impl.util.Compatibility.cache
     cache.addCacheFile(uri, job.getConfiguration)
   }
-
-  def findCacheFile(conf: Configuration, nskey: DistCache.NamespacedKey): String =
-    if (org.apache.hadoop.util.VersionInfo.getVersion.contains("cdh4"))
-      com.nicta.scoobi.impl.util.Compatibility.cache.getLocalCacheFiles(conf).toList.find(_.getName == nskey.combined)
-        .getOrElse(sys.error(s"Could not find $nskey to pop from local path.")).toString
-    else
-      nskey.combined
 }
 
 object DistCache {
