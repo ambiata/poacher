@@ -8,13 +8,16 @@ import com.ambiata.promulgate.project.ProjectPlugin._
 object build extends Build {
   type Settings = Def.Setting[_]
 
+  lazy val hadoopVersion =
+    Option(System.getenv("HADOOP_VERSION")).getOrElse("yarn")
+
   lazy val poacher = Project(
     id = "poacher"
   , base = file(".")
   , settings =
     standardSettings ++
     promulgate.library(s"com.ambiata.poacher", "ambiata-oss") ++
-    Seq[Settings](libraryDependencies ++= depend.scalaz ++ depend.mundane ++ depend.scoobi(version.value) ++ depend.hadoop(version.value) ++ depend.specs2 ++ depend.thrift ++ depend.shapeless ++ depend.disorder)
+    Seq[Settings](libraryDependencies ++= depend.scalaz ++ depend.mundane ++ depend.scoobi(hadoopVersion) ++ depend.hadoop(hadoopVersion) ++ depend.specs2 ++ depend.thrift ++ depend.shapeless ++ depend.disorder)
   )
 
   lazy val standardSettings = Defaults.coreDefaultSettings ++
@@ -27,8 +30,8 @@ object build extends Build {
 
   lazy val projectSettings: Seq[Settings] = Seq(
     name := "poacher"
-  , version in ThisBuild := s"""1.0.0-${Option(System.getenv("HADOOP_VERSION")).getOrElse("cdh5")}"""
-  , unmanagedSourceDirectories in Compile += (sourceDirectory in Compile).value / s"scala-${Option(System.getenv("HADOOP_VERSION")).getOrElse("cdh5")}"
+  , version in ThisBuild := s"""1.0.0-$hadoopVersion"""
+  , unmanagedSourceDirectories in Compile += (sourceDirectory in Compile).value / s"scala-$hadoopVersion"
   , organization := "com.ambiata"
   , scalaVersion := "2.11.2"
   , crossScalaVersions := Seq("2.11.2")

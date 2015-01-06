@@ -25,20 +25,20 @@ object depend {
 
   def scoobi(version: String) = {
     val jars =
-      if (version.contains("cdh4"))      Seq("com.nicta" %% "scoobi"                    % "0.9.0-cdh4-20141017043441-0c9fb18",
+      if (version == "mr1")              Seq("com.nicta" %% "scoobi"                    % "0.9.0-cdh4-20141017043441-0c9fb18",
                                              "com.nicta" %% "scoobi-compatibility-cdh4" % "1.0.3")
-      else if (version.contains("cdh5")) Seq("com.nicta" %% "scoobi"                    % "0.9.0-cdh5-20141017042745-0c9fb18",
+      else if (version == "yarn")        Seq("com.nicta" %% "scoobi"                    % "0.9.0-cdh5-20141017042745-0c9fb18",
                                              "com.nicta" %% "scoobi-compatibility-cdh5" % "1.0.3")
       else                               sys.error(s"unsupported scoobi version, can not build for $version")
     jars.map(_ intransitive())
   }
 
   def hadoop(version: String, hadoopVersion: String = "2.2.0") =
-    if (version.contains("cdh4"))      Seq("org.apache.hadoop" % "hadoop-client" % "2.0.0-mr1-cdh4.6.0" % "provided" exclude("asm", "asm"),
+    if (version == "mr1")              Seq("org.apache.hadoop" % "hadoop-client" % "2.0.0-mr1-cdh4.6.0" % "provided" exclude("asm", "asm"),
                                            "org.apache.hadoop" % "hadoop-core"   % "2.0.0-mr1-cdh4.6.0" % "provided",
                                            "org.apache.avro"   % "avro-mapred"   % "1.7.4"              % "provided" classifier "hadoop2")
 
-    else if (version.contains("cdh5")) Seq("org.apache.hadoop" % "hadoop-client" % "2.2.0-cdh5.0.0-beta-2" % "provided" exclude("asm", "asm"),
+    else if (version == "yarn")        Seq("org.apache.hadoop" % "hadoop-client" % "2.2.0-cdh5.0.0-beta-2" % "provided" exclude("asm", "asm"),
                                            "org.apache.avro"   % "avro-mapred"   % "1.7.5-cdh5.0.0-beta-2" % "provided")
 
     else sys.error(s"unsupported hadoop version, can not build for $version")
