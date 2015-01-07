@@ -14,7 +14,7 @@ object build extends Build {
   , settings =
     standardSettings ++
     promulgate.library(s"com.ambiata.poacher", "ambiata-oss") ++
-    Seq[Settings](libraryDependencies ++= depend.scalaz ++ depend.mundane ++ depend.scoobi(version.value) ++ depend.hadoop(version.value) ++ depend.specs2 ++ depend.thrift ++ depend.shapeless)
+    Seq[Settings](libraryDependencies ++= depend.scalaz ++ depend.mundane ++ depend.scoobi(version.value) ++ depend.hadoop(version.value) ++ depend.specs2 ++ depend.thrift ++ depend.shapeless ++ depend.disorder)
   )
 
   lazy val standardSettings = Defaults.coreDefaultSettings ++
@@ -33,13 +33,24 @@ object build extends Build {
   , scalaVersion := "2.11.2"
   , crossScalaVersions := Seq("2.11.2")
   , fork in run  := true
+  , publishArtifact in Test := true
   )
 
   lazy val compilationSettings: Seq[Settings] = Seq(
     javaOptions ++= Seq("-Xmx3G", "-Xms512m", "-Xss4m")
     , javacOptions ++= Seq("-source", "1.6", "-target", "1.6")
     , maxErrors := 10
-    , scalacOptions ++= Seq("-target:jvm-1.6", "-deprecation", "-unchecked", "-feature", "-language:_", "-Xlint", "-Xfatal-warnings", "-Yinline-warnings")
+    ,  scalacOptions in Compile ++= Seq(
+        "-target:jvm-1.6"
+      , "-deprecation"
+      , "-unchecked"
+      , "-feature"
+      , "-language:_"
+      , "-Ywarn-value-discard"
+      , "-Yno-adapted-args"
+      , "-Xlint"
+      , "-Xfatal-warnings"
+      , "-Yinline-warnings")
     , scalacOptions in (Compile,doc) := Seq("-language:_", "-feature")
   )
 

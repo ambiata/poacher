@@ -60,15 +60,14 @@ Committer
 
   private def commit(pre: (MrContext, Path) => Hdfs[Unit],
                      mapping: (Path, String) => Path,
-                     expected: List[(String, String)]): Result[Unit] =
-    TemporaryDirPath.withDirPath { dir =>
-      val c = new Configuration
-      val ctx = MrContext(ContextId.randomContextId)
-      val target = new Path(dir.path)
-      (for {
-        _ <- pre(ctx, target)
-        _ <- Committer.commit(ctx, mapping(target, _), cleanup = true)
-        _ <- expected.traverse { case (path, e) => readFile(new Path(target, path)).map(_ must_== e)}
-      } yield ()).run(c)
-    }.run.unsafePerformIO()
+                     expected: List[(String, String)]): Result[Unit] = (for {
+    c <- ConfigurationTemporary.random.conf
+    t = MrContext(ContextId.randomContextId)
+    _ <- (for {
+      p <- HdfsTemporary.random.path
+      _ <- pre(t, p)
+      _ <- Committer.commit(t, mapping(p, _), cleanup = true)
+      _ <- expected.traverse({ case (path, e) => readFile(new Path(p, path)).map(_ must_== e) })
+    } yield ()).run(c)
+  } yield ()).unsafePerformIO
 }
