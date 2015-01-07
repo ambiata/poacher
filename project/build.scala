@@ -33,7 +33,7 @@ object build extends Build {
   , scalaVersion := "2.11.2"
   , crossScalaVersions := Seq("2.11.2")
   , fork in run  := true
-  , publishArtifact in Test := true
+  , publishArtifact in (Test, packageBin) := true
   )
 
   lazy val compilationSettings: Seq[Settings] = Seq(
