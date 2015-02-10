@@ -1,8 +1,8 @@
 package com.ambiata.poacher.mr
 
-import org.apache.hadoop.fs.Path
-
-import com.ambiata.poacher.hdfs.Hdfs
+import com.ambiata.mundane.path._
+import com.ambiata.poacher.hdfs._
+import com.ambiata.poacher.hdfs.HdfsPath._
 
 import scalaz._, Scalaz._
 
@@ -20,26 +20,22 @@ object Committer {
    * If the destination dir or any of the children in context.output is a file, an error
    * will be returned.
    */
-  def commit(context: MrContext, mapping: String => Path, cleanup: Boolean): Hdfs[Unit] = for {
-    paths <- Hdfs.globPaths(context.output, "*").filterHidden
-    // The expected outputs should _never_ exist to avoid corrupt data
-    _     <- paths.traverse { p =>
-      val name = mapping(p.getName)
-      for {
-        e <- Hdfs.exists(name)
-        l <- if (e) Hdfs.globPaths(name).filterHidden
-             else nil.pure[Hdfs]
-        _ <- Hdfs.unless(l.isEmpty)(Hdfs.fail(s"Attempting to commit to a path that already contains data: '${name.toString}'"))
-      } yield ()
-    }
-    _     <- paths.traverse(p => for {
-      t <- Hdfs.value(mapping(p.getName))
-      d <- Hdfs.isDirectory(p)
-      _ <- if(!d) Hdfs.fail(s"Can not commit '${p}' as its not a dir") else Hdfs.ok(())
-      _ <- Hdfs.mkdir(t)
-      s <- Hdfs.globPaths(p, "*")
-      _ <- s.traverse(subpath => Hdfs.mv(subpath, t))
+  def commit(context: MrContext, mapping: Option[Component] => HdfsPath, cleanup: Boolean): Hdfs[Unit] = for {
+    g <- context.output.globPaths("*")
+    h =  HdfsPath.filterHidden(g)
+    _ <- h.traverse(p => for {
+      n <- Hdfs.ok(mapping(p.basename))
+      e <- n.exists
+      l <- if (e) n.globPaths("*")
+           else   nil.pure[Hdfs]
+      t =  HdfsPath.filterHidden(l)
+      _ <- Hdfs.unless(t.isEmpty)(Hdfs.fail(s"Attempting to commit to a path that already contains data: '${n}'"))
+      c <- p.isDirectory
+      _ <- if (!c) Hdfs.fail(s"Can not commit '${p}' as its not a dir") else Hdfs.ok(())
+      d <- n.mkdirsOrFail
+      s <- p.globPaths("*")
+      _ <- s.traverse(subpath => subpath.move(d.toHdfsPath))
     } yield ())
-    _     <- if(cleanup) context.cleanup else Hdfs.ok(())
+    _ <- Hdfs.when(cleanup)(context.cleanup)
   } yield ()
 }

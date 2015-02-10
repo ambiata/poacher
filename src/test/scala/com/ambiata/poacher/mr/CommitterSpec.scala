@@ -65,9 +65,9 @@ Committer
     t = MrContext(ContextId.randomContextId)
     _ <- (for {
       p <- HdfsTemporary.random.path
-      _ <- pre(t, p)
-      _ <- Committer.commit(t, mapping(p, _), cleanup = true)
-      _ <- expected.traverse({ case (path, e) => readFile(new Path(p, path)).map(_ must_== e) })
+      _ <- pre(t, p.toHPath)
+      _ <- Committer.commit(t, mapping(p.toHPath, _), cleanup = true)
+      _ <- expected.traverse({ case (path, e) => readFile(new Path(p.toHPath, path)).map(_ must_== e) })
     } yield ()).run(c)
   } yield ()).unsafePerformIO
 }

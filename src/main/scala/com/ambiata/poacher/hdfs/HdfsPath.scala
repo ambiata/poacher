@@ -170,13 +170,65 @@ case class HdfsPath(path: Path) {
   def writeExists[A](thunk: => Hdfs[A]): Hdfs[A] =
     doesNotExist(s"A file or directory already exists in the specified location, HdfsPath($path).", thunk)
 
-  def mkdirs: Hdfs[HdfsDirectory] =
-    withFileSystem(_.mkdirs(toHPath)).as(HdfsDirectory.unsafe(path.path))
+  def rename(target: HdfsPath): Hdfs[Boolean] =
+    withFileSystem(fs => try {
+      fs.rename(toHPath, target.toHPath)
+    } catch {
+      case ioe: IOException =>
+        if(ioe.getMessage.startsWith("Target") && ioe.getMessage.endsWith("is a directory")) false
+        else throw ioe
+    })
 
-  def mkdirsWithRetry: Hdfs[HdfsDirectory] =
-    ???
+  def resolvePath: Hdfs[HdfsPath] =
+    withFileSystem(fs => HdfsPath.fromPath(fs.resolvePath(toHPath)))
 
-  def writeWith[A](f: OutputStream => Hdfs[A]): Hdfs[A] = // todo not sure about this
+  def mkdirs: Hdfs[Option[HdfsDirectory]] =
+    withFileSystem(fs => if (fs.mkdirs(toHPath)) HdfsDirectory.unsafe(path.path).some else none)
+
+  def mkdirsOrFail: Hdfs[HdfsDirectory] =
+    mkdirs.flatMap(o => Hdfs.fromOption(o, s"A file already existed at the specified path, $path"))
+
+  /**
+    *  Create a new dir, and if it fails, retry with a new name. This should be atomic
+    *
+    *  Steps:
+    *  1. Create a tmp base dir under /tmp/UUID.randomUUID
+    *  2. Create the parent destination dir if it doesn't exist
+    *  3. In a loop:
+    *    1. Create a new dir under the tmp dir with the name of the destination dir
+    *    2. Try moving the new dir to the parent destination dir (using FileSystem.rename)
+    *    3. If the move fails, get the next name and try again
+    *
+    *
+    * Treats the internal 'path' as the base directory.
+    */
+  def mkdirsWithRetry(first: String, nextName: String => Option[String]): Hdfs[Option[HdfsDirectory]] = {
+    for {
+      _ <- Hdfs.when(first == "")(Hdfs.fail("go away idiot"))
+      fs <- Hdfs.filesystem
+      t   = HdfsPath.fromString("/tmp") /- java.util.UUID.randomUUID.toString
+      q  <- t.mkdirs
+      // todo should we resolve here before we mkdirs?
+      z  <- mkdirs
+      r  <- xx(t, this, first, nextName, 0)
+      _  <- t.delete
+    } yield r
+  }
+
+  def xx(tmp: HdfsPath, target: HdfsPath, name: String, nextName: String => Option[String], count: Int): Hdfs[Option[HdfsDirectory]] = {
+    val source = tmp /- name
+    for {
+      _ <- Hdfs.when(count > 100)(Hdfs.fail(""))
+      e <- source.mkdirs
+      m <- source.rename(target)
+      z <- (target /- name).exists
+      // add destination exists check
+      r <- if (e.isEmpty || m == false) nextName(name).map(s => xx(tmp, target, s, nextName, count + 1)).sequence.map(_.flatten)
+           else HdfsDirectory.fromHdfsPath(target /- name).some.pure[Hdfs]
+    } yield r
+  }
+
+  def writeWith[A](f: OutputStream => Hdfs[A]): Hdfs[A] =
     Hdfs.using(toOutputStream)(o => f(o))
 
   def touch: Hdfs[Unit] = for {
@@ -278,42 +330,58 @@ case class HdfsPath(path: Path) {
         , d => file.copyTo(d).void
         , file.copy(destination).void)
       , dir =>
-      destination.determinefWith(
-          _ => Hdfs.fail[Unit](s"File exists in the target location $destination. Can not move $path directory.")
-        , d => dir.copyTo(d).void
-        , dir.copy(destination).void
-      )).as(destination)
+        Hdfs.fail[Unit](s"Copying from a HdfsDirectory(path) is current an unsupported operation")).as(destination)
 
-  def size: Hdfs[BytesQuantity] =
-    determinefWith(_.size, _.size, 0.bytes.pure[Hdfs]) // Should this fail?
+  def size: Hdfs[Option[BytesQuantity]] =
+    determinefWith(_.size, _.size, none.pure[Hdfs])
 
-  def numberOfFiles: Hdfs[Int] =
-    ???
+  def sizeOrFail: Hdfs[BytesQuantity] =
+    size.flatMap(Hdfs.fromOption(_, s"Can not calculate the size of a path that does not exist, HdfsPath($path)."))
+
+  def numberOfFiles: Hdfs[Option[Int]] =
+    determinefWith(_ => 1.some.pure[Hdfs], _.numberOfFiles, none.pure[Hdfs])
+
+  def numberOfFilesOrFail: Hdfs[Int] =
+    numberOfFiles.flatMap(Hdfs.fromOption(_,
+      s"Can not calculate the number of files within a path that does not exist, HdfsPath($path)."))
 
   def globFiles(glob: String): Hdfs[List[HdfsFile]] =
     determinef(v => List(v).pure[Hdfs], _.globFiles(glob))
 
-  def globDirs(glob: String): Hdfs[List[HdfsDirectory]] =
-    determinef(v => nil.pure[Hdfs], _.globDirs(glob))
+  def globDirectories(glob: String): Hdfs[List[HdfsDirectory]] =
+    determinef(_ => nil.pure[Hdfs], _.globDirectories(glob))
 
   def globPaths(glob: String): Hdfs[List[HdfsPath]] =
-    determinef(_ => List(this).pure[Hdfs], d => d.globPaths(glob))
+    determinef(_ => List(this).pure[Hdfs], _.globPaths(glob))
 
-  def globFilesRecursively(glob: String): Hdfs[List[HdfsFile]] =
-    ???
+  def listFiles: Hdfs[List[HdfsFile]] =
+    globFiles("*")
 
-  def globDirsRecursively(glob: String): Hdfs[List[HdfsDirectory]] =
-    ???
+  def listDirectories: Hdfs[List[HdfsDirectory]] =
+    globDirectories("*")
 
-  def globPathsRecursively(glob: String): Hdfs[List[HdfsPath]] =
-    ???
+  def listPaths: Hdfs[List[HdfsPath]] =
+    globPaths("*")
 
+  def listFilesRelativeTo: Hdfs[List[(HdfsFile, HdfsPath)]] =
+    determinef(_ => nil.pure[Hdfs], _.listFilesRelativeTo)
 
+  def listFilesRecursivelyRelativeTo: Hdfs[List[(HdfsFile, HdfsPath)]] =
+    determinef(_ => nil.pure[Hdfs], _.listFilesRelativeTo)
+
+  def listFilesRecursively: Hdfs[List[HdfsFile]] =
+    determinef(f => List(f).pure[Hdfs], _.listFilesRecursively)
+
+  def listDirectoriesRecursively: Hdfs[List[HdfsDirectory]] =
+    determinef(f => nil.pure[Hdfs], _.listDirectoriesRecursively)
+
+  def listPathsRecursively: Hdfs[List[HdfsPath]] =
+    determinef(f => List(this).pure[Hdfs], _.listPathsRecursively)
 }
 
 object HdfsPath {
   def fromPath(p: HPath): HdfsPath =
-    fromString(p.toString)
+    fromString(p.toUri.getPath)
 
   def fromString(s: String): HdfsPath =
     HdfsPath(Path(s))
@@ -339,5 +407,4 @@ object HdfsPath {
 
   implicit def HdfsPathOrdering: scala.Ordering[HdfsPath] =
     HdfsPathOrder.toScalaOrdering
-
 }

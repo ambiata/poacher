@@ -1,6 +1,7 @@
 package com.ambiata.poacher.hdfs
 
 import com.ambiata.mundane.control._
+import com.ambiata.mundane.testing._
 import com.ambiata.mundane.testing.RIOMatcher._
 import com.ambiata.poacher.hdfs.ConfigurationTemporary._
 import org.apache.hadoop.conf.Configuration
@@ -17,5 +18,18 @@ object HdfsMatcher extends ThrownExpectations with ScalaCheckMatchers {
 
   implicit def HdfsProp[A: AsResult](r: => Hdfs[A]): Prop =
     resultProp(AsResult(r))
+
+  def beFail[A]: Matcher[Hdfs[A]] =
+    beFailLike(_ => Success())
+
+  def beFailLike[A](check: String \&/ Throwable => SpecsResult): Matcher[Hdfs[A]] = new Matcher[Hdfs[A]] {
+    def apply[S <: Hdfs[A]](attempt: Expectable[S]) = {
+      val r: SpecsResult = withConf(c => attempt.value.run(c)).unsafePerformIO match {
+        case Ok(value)    => Failure(s"Failure: Result ok with value <$value>")
+        case Error(error) => check(error)
+      }
+      result(r.isSuccess, r.message, r.message, attempt)
+    }
+  }
 
 }

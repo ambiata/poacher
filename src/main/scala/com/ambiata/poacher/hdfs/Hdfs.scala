@@ -38,14 +38,20 @@ object Hdfs {
   def addFinalizer(finalizer: Hdfs[Unit]): Hdfs[Unit] =
     Hdfs(c => RIO.addFinalizer(Finalizer(finalizer.run(c))))
 
-  def value[A](a: A): Hdfs[A] =
-    Hdfs(_ => RIO.ok(a))
+  def unsafeFlushFinalizers: Hdfs[Unit] =
+    Hdfs.fromRIO(RIO.unsafeFlushFinalizers)
 
   def ok[A](a: A): Hdfs[A] =
-    value(a)
+    Hdfs(_ => RIO.ok(a))
 
   def safe[A](a: => A): Hdfs[A] =
     Hdfs(_ => RIO.safe(a))
+
+  def io[A](a: => A): Hdfs[A] =
+    Hdfs(_ => RIO.io(a))
+
+  def result[A](a: => Result[A]): Hdfs[A] =
+    Hdfs(_ => RIO.result(a))
 
   def fail[A](e: String): Hdfs[A] =
     Hdfs(_ => RIO.fail(e))
@@ -59,7 +65,7 @@ object Hdfs {
     fromDisjunction(v.disjunction)
 
   def fromOption[A](o: Option[A], err: String): Hdfs[A] =
-    o.map(value).getOrElse(fail(err))
+    o.map(ok).getOrElse(fail(err))
 
   def fromIO[A](io: IO[A]): Hdfs[A] =
     Hdfs(_ => RIO.fromIO(io))
@@ -263,8 +269,14 @@ object Hdfs {
   def log(message: String) =
     fromIO(IO(println(message)))
 
+  def when[A](condition: Boolean)(action: Hdfs[A]): Hdfs[Unit] =
+    if (condition) action.map(_ => ()) else Hdfs.ok(())
+
   def unless[A](condition: Boolean)(action: Hdfs[A]): Hdfs[Unit] =
-    if (!condition) action.map(_ => ()) else Hdfs.ok(())
+    when(!condition)(action)
+
+  def using[A: Resource, B <: A, C](a: Hdfs[B])(run: B => Hdfs[C]): Hdfs[C] =
+    Hdfs(c => RIO.using[A, B, C](a.run(c))(b => run(b).run(c)))
 
   /**
    * @return a list of all subdirectories names (from path) with their total size

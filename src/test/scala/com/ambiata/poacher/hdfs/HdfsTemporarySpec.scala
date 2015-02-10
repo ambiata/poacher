@@ -22,21 +22,21 @@ class HdfsTemporarySpec extends Specification with ScalaCheck { def is = s2"""
 """
   /** Testing Temporary clean up finalizers */
   def file = prop((data: String, tmp: HdfsTemporary) => for {
-    f <- tmp.path
-    _ <- Hdfs.write(f, data)
-    e <- Hdfs.exists(f)
-    _ <- Hdfs.fromRIO(RIO.unsafeFlushFinalizers)
-    z <- Hdfs.exists(f)
+    p <- tmp.path
+    _ <- p.write(data)
+    e <- p.exists
+    _ <- Hdfs.unsafeFlushFinalizers
+    z <- p.exists
   } yield e -> z ==== true -> false)
 
   /** Testing Temporary clean up finalizers */
   def directory = prop((data: String, id: Ident, hdfs: HdfsTemporary) => for {
     d <- hdfs.path
-    f = new Path(d, id.value)
-    _ <- Hdfs.write(f , data)
-    e <- Hdfs.exists(f)
-    _ <- Hdfs.fromRIO(RIO.unsafeFlushFinalizers)
-    z <- Hdfs.exists(d)
+    f = d /- id.value
+    _ <- f.write(data)
+    e <- f.exists
+    _ <- Hdfs.unsafeFlushFinalizers
+    z <- f.exists
   } yield e -> z ==== true -> false)
 
   def conflicts = prop((hdfs: HdfsTemporary, i: NaturalInt) => i.value > 0 ==> (for {
