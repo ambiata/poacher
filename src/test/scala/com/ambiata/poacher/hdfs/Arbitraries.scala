@@ -12,5 +12,5 @@ object Arbitraries {
     a <- Gen.listOfN(i, Gen.identifier)
     z = a.mkString("/")
     f <- Gen.oneOf("", "/")
-  } yield HdfsTemporary(s"temporary-${java.util.UUID.randomUUID().toString}/" + z + f))
+  } yield HdfsTemporary(Temporary.uniqueLocalPath, s"temporary-${java.util.UUID.randomUUID().toString}/" + z + f))
 }
