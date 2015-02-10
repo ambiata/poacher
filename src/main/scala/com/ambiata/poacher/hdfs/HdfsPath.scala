@@ -278,23 +278,26 @@ case class HdfsPath(path: Path) {
         , d => file.copyTo(d).void
         , file.copy(destination).void)
       , dir =>
-      destination.determinefWith(
-          _ => Hdfs.fail[Unit](s"File exists in the target location $destination. Can not move $path directory.")
-        , d => dir.copyTo(d).void
-        , dir.copy(destination).void
-      )).as(destination)
+        Hdfs.fail[Unit](s"Copying from a HdfsDirectory(path) is current an unsupported operation")).as(destination)
 
-  def size: Hdfs[BytesQuantity] =
-    determinefWith(_.size, _.size, 0.bytes.pure[Hdfs]) // Should this fail?
+  def size: Hdfs[Option[BytesQuantity]] =
+    determinefWith(_.size, _.size, none.pure[Hdfs])
 
-  def numberOfFiles: Hdfs[Int] =
-    ???
+  def sizeOrFail: Hdfs[BytesQuantity] =
+    size.flatMap(Hdfs.fromOption(_, s"Can not calculate the size of a path that does not exist, HdfsPath($path)."))
+
+  def numberOfFiles: Hdfs[Option[Int]] =
+    determinefWith(_ => 1.some.pure[Hdfs], _.numberOfFiles, none.pure[Hdfs])
+
+  def numberOfFilesOrFail: Hdfs[Int] =
+    numberOfFiles.flatMap(Hdfs.fromOption(_,
+      s"Can not calculate the number of files within a path that does not exist, HdfsPath($path)."))
 
   def globFiles(glob: String): Hdfs[List[HdfsFile]] =
     determinef(v => List(v).pure[Hdfs], _.globFiles(glob))
 
-  def globDirs(glob: String): Hdfs[List[HdfsDirectory]] =
-    determinef(v => nil.pure[Hdfs], _.globDirs(glob))
+  def globDirectories(glob: String): Hdfs[List[HdfsDirectory]] =
+    determinef(v => nil.pure[Hdfs], _.globDirectories(glob))
 
   def globPaths(glob: String): Hdfs[List[HdfsPath]] =
     determinef(_ => List(this).pure[Hdfs], d => d.globPaths(glob))
@@ -313,7 +316,8 @@ case class HdfsPath(path: Path) {
 
 object HdfsPath {
   def fromPath(p: HPath): HdfsPath =
-    fromString(p.toString)
+    fromString(p.toUri.getPath) //nb: toString adds 'file:/$path'
+//    fromString(p.toString)
 
   def fromString(s: String): HdfsPath =
     HdfsPath(Path(s))
@@ -339,5 +343,4 @@ object HdfsPath {
 
   implicit def HdfsPathOrdering: scala.Ordering[HdfsPath] =
     HdfsPathOrder.toScalaOrdering
-
 }
