@@ -48,7 +48,12 @@ case class DistCache(base: Path, contextId: ContextId) {
      _hard_ if anything goes wrong. */
   def pop[A](conf: Configuration, key: DistCache.Key, f: Array[Byte] => String \/ A): A = {
     val nskey = key.namespaced(contextId.value)
-    Files.readBytes(FilePath.unsafe(Compatibility.findCacheFile(conf, nskey))).flatMap(bytes => RIO.safe { f(bytes) }).unsafePerformIO match {
+    val p = LocalPath.fromString(Compatibility.findCacheFile(conf, nskey)) //TODO HdfsPath
+    (for {
+      d <- p.readBytes
+      z <- RIO.fromOption(d, s"$p was empty.")
+      r <- RIO.safe(f(z))
+    } yield r).unsafePerformIO match {
       case Ok(\/-(a)) =>
         a
       case Ok(-\/(s)) =>

@@ -8,7 +8,7 @@ import org.apache.hadoop.fs.{FileContext, FileSystem, FileUtil, Path}
 import java.io._
 
 import com.ambiata.mundane.control._
-import com.ambiata.mundane.io.{BytesQuantity, FilePath, Streams, MemoryConversions}
+import com.ambiata.mundane.io.{BytesQuantity, Streams, MemoryConversions}
 import MemoryConversions._
 
 case class Hdfs[A](run: Configuration => RIO[A]) {
@@ -186,7 +186,7 @@ object Hdfs {
     _ <- Hdfs.safe(mkdir(p.getParent)).void
     f <- filesystem
     _ <- Hdfs.fromRIO(RIO.using(RIO.safe[OutputStream](f.create(p))) { out =>
-      Streams.write(out, content, "UTF-8")
+      Streams.write(out, content)
     })
   } yield ()
 
