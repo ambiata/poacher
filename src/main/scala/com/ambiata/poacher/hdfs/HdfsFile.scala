@@ -144,6 +144,9 @@ class HdfsFile private (val path: Path) extends AnyVal {
       })
     } yield r)
 
+  def writeWith[A](f: OutputStream => Hdfs[A]): Hdfs[A] = // not sure about this
+    Hdfs.using(toOutputStream)(o => f(o))
+
   def writeStream(content: InputStream): Hdfs[Unit] =
     Hdfs.using(toOutputStream)(o => Hdfs.fromRIO(Streams.pipe(content, o)))
 

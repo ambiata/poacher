@@ -38,4 +38,5 @@ object Committer {
     } yield ())
     _ <- Hdfs.when(cleanup)(context.cleanup)
   } yield ()
+
 }
