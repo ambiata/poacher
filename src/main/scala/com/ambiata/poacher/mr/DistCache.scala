@@ -17,7 +17,7 @@ import org.apache.hadoop.mapreduce.Job
  * _unsafe_ at best, and should be used with extreme caution. The only valid reason to
  * use it is when writing raw map reduce jobs.
  */
-case class DistCache(base: Path, contextId: ContextId) {
+case class DistCache(base: HdfsPath, contextId: ContextId) {
 
   /** Push a representation of a data-type to the distributed cache for this job, under the
      specified key. A namespace is added to the key to make it unique for each instance
@@ -31,7 +31,8 @@ case class DistCache(base: Path, contextId: ContextId) {
     val nskey = key.namespaced(contextId.value)
     val tmp = s"${base}/${nskey.combined}"
     val uri = new URI(tmp + "#" + nskey.combined)
-    (Hdfs.writeWith(new Path(tmp), out => RIO.safe(out.write(bytes, 0, length))) >> Hdfs.safe {
+    val path = HdfsPath.fromString(tmp)
+    (path.writeWith(out => Hdfs.safe(out.write(bytes, 0, length))) >> Hdfs.safe {
       addCacheFile(uri, job)
     }).run(job.getConfiguration).unsafePerformIO match {
       case Ok(_) =>

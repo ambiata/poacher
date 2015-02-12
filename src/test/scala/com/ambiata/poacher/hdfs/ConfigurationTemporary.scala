@@ -7,6 +7,9 @@ import com.nicta.scoobi.Scoobi._
 import scalaz._, Scalaz._, effect.IO
 
 case class ConfigurationTemporary(path: String) {
+  def hconf: Hdfs[Configuration] =
+    Hdfs.fromRIO(conf)
+
   def conf: RIO[Configuration] = for {
     d <- LocalTemporary(Temporary.uniqueLocalPath, path).directory // Hdfsize
     c = new Configuration

@@ -1,5 +1,6 @@
 package com.ambiata.poacher.mr
 
+import com.ambiata.poacher.hdfs._
 
 import scalaz._
 
@@ -11,7 +12,7 @@ import org.apache.hadoop.mapreduce.Job
  * _unsafe_ at best, and should be used with extreme caution. The only valid reason to
  * use it is when writing raw map reduce jobs.
  */
-case class ThriftCache(base: Path, id: ContextId) {
+case class ThriftCache(base: HdfsPath, id: ContextId) {
   val distCache = DistCache(base, id)
   val serializer = ThriftSerialiser()
 
