@@ -11,6 +11,8 @@ class ByteWriterSpec extends Specification with ScalaCheck { def is = s2"""
   Symmetric string                              $symmetricString
   Symmetric short                               $symmetricShort
   Symmetric int                                 $symmetricInt
+  Symmetric long                                $symmetricLong
+  Symmetric double                              $symmetricDouble
 
 """
 
@@ -43,6 +45,18 @@ class ByteWriterSpec extends Specification with ScalaCheck { def is = s2"""
     val bytes = new Array[Byte](offset.s + 4)
     ByteWriter.writeInt(bytes, i, offset.s)
     WritableComparator.readInt(bytes, offset.s) === i
+  })
+
+  def symmetricLong = prop((l: Long, offset: PositiveShort) => {
+    val bytes = new Array[Byte](offset.s + 8)
+    ByteWriter.writeLong(bytes, l, offset.s)
+    WritableComparator.readLong(bytes, offset.s) === l
+  })
+
+  def symmetricDouble = prop((d: Double, offset: PositiveShort) => {
+    val bytes = new Array[Byte](offset.s + 8)
+    ByteWriter.writeDouble(bytes, d, offset.s)
+    WritableComparator.readDouble(bytes, offset.s) === d
   })
 
   case class PositiveShort(s: Short)

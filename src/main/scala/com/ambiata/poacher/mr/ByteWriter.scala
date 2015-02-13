@@ -25,4 +25,18 @@ object ByteWriter {
     writeByte(bytes, ((value >>> 8) & 0xff).toByte, offset)
     writeByte(bytes, (value & 0xff).toByte, offset + 1)
   }
+
+  def writeLong(bytes: Array[Byte], value: Long, offset: Int): Unit = {
+    writeByte(bytes, (value >>> 56).toByte, offset)
+    writeByte(bytes, ((value >>> 48) & 0xff).toByte, offset + 1)
+    writeByte(bytes, ((value >>> 40) & 0xff).toByte, offset + 2)
+    writeByte(bytes, ((value >>> 32) & 0xff).toByte, offset + 3)
+    writeByte(bytes, ((value >>> 24) & 0xff).toByte, offset + 4)
+    writeByte(bytes, ((value >>> 16) & 0xff).toByte, offset + 5)
+    writeByte(bytes, ((value >>> 8) & 0xff).toByte, offset + 6)
+    writeByte(bytes, (value & 0xff).toByte, offset + 7)
+  }
+
+  def writeDouble(bytes: Array[Byte], value: Double, offset: Int): Unit =
+    writeLong(bytes, java.lang.Double.doubleToLongBits(value), offset)
 }
