@@ -1,6 +1,7 @@
 package com.ambiata.poacher.hdfs
 
-import org.specs2.Specification
+import Arbitraries._
+import org.specs2._
 import org.apache.hadoop.fs.Path
 import java.io.File
 import com.ambiata.mundane.testing.RIOMatcher._
@@ -8,7 +9,7 @@ import org.apache.hadoop.conf.Configuration
 
 import scalaz._, Scalaz._
 
-class HdfsSpec extends Specification { def is = s2"""
+class HdfsSpec extends Specification with ScalaCheck { def is = s2"""
 
  The Hdfs object provide functions to deal with paths
    it is possible to recursively glob paths  $e1
@@ -19,6 +20,15 @@ class HdfsSpec extends Specification { def is = s2"""
    clean up resources                  $cleanup
    handles failure                     $handlesFailure
    clean up resources with failure     $cleanupFailure
+
+ Moving Stuff
+ ============
+
+   Can move a file                                               $moveFileCheck
+   Can move a dir                                                $moveDirCheck
+   Can move a file to a dir which already exists                 $moveFileParentExists
+   Can move a dir to a dir which already exists                  $moveDirParentExists
+   Move will fail if the destination parent dir is a file        $moveParentFile
 
 """
 
@@ -51,4 +61,54 @@ class HdfsSpec extends Specification { def is = s2"""
     v ==== 1
   }
 
+  def moveFileCheck = prop((source: HdfsTemporary, dest: HdfsTemporary, contents: String) => (for {
+    d <- dest.path
+    s <- source.path
+    c <- moveFile(s, d, contents)
+  } yield c).run(new Configuration) must beOkValue(contents))
+  .set(minTestsOk = 10)
+
+  def moveFileParentExists = prop((source: HdfsTemporary, dest: HdfsTemporary, contents: String) => (for {
+    d <- dest.path
+    s <- source.path
+    _ <- Hdfs.mkdir(d.getParent)
+    c <- moveFile(s, d, contents)
+  } yield c).run(new Configuration) must beOkValue(contents))
+  .set(minTestsOk = 10)
+
+  def moveDirCheck = prop((source: HdfsTemporary, sub: SubPath, dest: HdfsTemporary, contents: String) => (for {
+    d <- dest.path
+    s <- source.path
+    c <- moveDir(s, sub, d, contents)
+  } yield c).run(new Configuration) must beOkValue(contents))
+  .set(minTestsOk = 10)
+
+  def moveDirParentExists = prop((source: HdfsTemporary, sub: SubPath, dest: HdfsTemporary, contents: String) => (for {
+    d <- dest.path
+    s <- source.path
+    _ <- Hdfs.mkdir(d.getParent)
+    c <- moveDir(s, sub, d, contents)
+  } yield c).run(new Configuration) must beOkValue(contents))
+  .set(minTestsOk = 10)
+
+  def moveParentFile = prop((source: HdfsTemporary, dest: HdfsTemporary, contents: String) => (for {
+    d <- dest.path
+    s <- source.path
+    _ <- Hdfs.write(d.getParent, contents)
+    c <- moveFile(s, d, contents)
+  } yield c).run(new Configuration) must beFail)
+  .set(minTestsOk = 10)
+
+  def moveFile(source: Path, dest: Path, contents: String): Hdfs[String] = for {
+    _ <- Hdfs.write(source, contents)
+    r <- Hdfs.mv(source, dest)
+    c <- Hdfs.readContentAsString(dest)
+  } yield c
+
+  def moveDir(source: Path, sub: SubPath, dest: Path, contents: String): Hdfs[String] = for {
+    _ <- Hdfs.mkdir(source)
+    _ <- Hdfs.write(new Path(source, sub.path), contents)
+    r <- Hdfs.mv(source, dest)
+    c <- Hdfs.readContentAsString(new Path(dest, sub.path))
+  } yield c
 }
