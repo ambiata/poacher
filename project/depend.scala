@@ -21,7 +21,7 @@ object depend {
                   Seq("com.ambiata"          %% "mundane-testing" % mundaneVersion % "test")
 
   val shapeless = Seq("com.chuusai"          %% "shapeless"       % "2.0.0")
-  val disorder =  Seq("com.ambiata"          %% "disorder"        % "0.0.1-20150102073535-5c2d9d6" % "test")
+  val disorder =  Seq("com.ambiata"          %% "disorder"        % "0.0.1-20150219021345-bfcf0db" % "test")
 
   def scoobi(version: String) = {
     val jars =
