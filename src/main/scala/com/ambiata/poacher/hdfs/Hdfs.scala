@@ -234,7 +234,7 @@ object Hdfs {
     })
 
   def mv(src: Path, dest: Path): Hdfs[Path] = for {
-    fs <- filesystem
+    fs      <- filesystem
     newDest <- Hdfs.safe {
       // Evil. Unfortunate moving dirs to dirs in HDFS is (intentionally) broken in local mode
       // https://issues.apache.org/jira/browse/HADOOP-9507
@@ -242,8 +242,11 @@ object Hdfs {
         new Path(dest, src.getName)
       else dest
     }
-    r <- if(fs.rename(src, newDest)) Hdfs.value(dest) else Hdfs.fail(s"Could not move ${src} to ${dest}")
-  } yield r
+    parent = newDest.getParent
+    m       <- mkdir(parent)
+    _       <- unless(m)(fail(s"'${parent}' is a file, can not move to a file!"))
+    _       <- unless(fs.rename(src, newDest))(fail(s"Could not move ${src} to ${dest}"))
+  } yield dest
 
   def delete(p: Path): Hdfs[Unit] =
     filesystem.map(_.delete(p, false)).void
