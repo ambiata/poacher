@@ -24,6 +24,24 @@ class HdfsPathSpec extends Specification with ScalaCheck { def is = s2"""
  HdfsPath
  ========
 
+  HdfsPath operations should have the symenatics as Path operations
+
+    ${ prop((l: Path, p: Path) => (HdfsPath(l) / p).path ==== l / p) }
+
+    ${ prop((l: Path, p: Path) => (HdfsPath(l).join(p)).path ==== l.join(p)) }
+
+    ${ prop((l: Path, p: Component) => (HdfsPath(l) | p).path ==== (l | p)) }
+
+    ${ prop((l: Path, p: Component) => (HdfsPath(l).extend(p)).path ==== l.extend(p)) }
+
+    ${ prop((l: Path, p: S) => (HdfsPath(l) /- p.value).path ==== l /- p.value) }
+
+    ${ prop((l: Path, p: Component) => (HdfsPath(l) | p).rebaseTo(HdfsPath(l)).map(_.path) ==== (l | p).rebaseTo(l)) }
+
+    ${ prop((l: Path) => HdfsPath(l).dirname.path ==== l.dirname) }
+
+    ${ prop((l: Path) => HdfsPath(l).basename ==== l.basename) }
+
 
 
 """
