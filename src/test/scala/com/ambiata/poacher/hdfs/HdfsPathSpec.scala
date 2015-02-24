@@ -43,6 +43,11 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
 
     ${ prop((l: Path) => HdfsPath(l).basename ==== l.basename) }
 
+  A list of HdfsPath can be ordered
+
+    ${ List(HdfsPath.fromString("z"), HdfsPath.fromString("a")).sorted ====
+         List(HdfsPath.fromString("a"), HdfsPath.fromString("z")) }
+
  HdfsPath IO
  ===========
 

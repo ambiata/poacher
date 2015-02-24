@@ -297,20 +297,21 @@ case class HdfsPath(path: Path) {
     determinef(v => List(v).pure[Hdfs], _.globFiles(glob))
 
   def globDirectories(glob: String): Hdfs[List[HdfsDirectory]] =
-    determinef(v => nil.pure[Hdfs], _.globDirectories(glob))
+    determinef(_ => nil.pure[Hdfs], _.globDirectories(glob))
 
   def globPaths(glob: String): Hdfs[List[HdfsPath]] =
-    determinef(_ => List(this).pure[Hdfs], d => d.globPaths(glob))
+    determinef(_ => List(this).pure[Hdfs], _.globPaths(glob))
 
   def globFilesRecursively(glob: String): Hdfs[List[HdfsFile]] =
-    ???
+    determinef(f => List(f).pure[Hdfs], _.globFilesRecursively(glob))
 
   def globDirsRecursively(glob: String): Hdfs[List[HdfsDirectory]] =
-    ???
+    determinef(_ => nil.pure[Hdfs], _.globDirectoriesRecursively(glob))
 
   def globPathsRecursively(glob: String): Hdfs[List[HdfsPath]] =
-    ???
+    determinef(_ => List(this).pure[Hdfs], _.globPathsRecursively(glob))
 
+  //todo add all list functions
 
 }
 
