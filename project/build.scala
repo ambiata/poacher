@@ -4,6 +4,7 @@ import sbt.KeyRanks._
 import sbtassembly.Plugin._
 import AssemblyKeys._
 import com.ambiata.promulgate.project.ProjectPlugin._
+import scoverage.ScoverageSbtPlugin._
 
 object build extends Build {
   type Settings = Def.Setting[_]
@@ -61,7 +62,7 @@ object build extends Build {
     initialCommands in console := "import org.specs2._"
   , logBuffered := false
   , cancelable := true
-  , fork in test := true
+  , fork in Test := true
   , javaOptions += "-Xmx3G"
   , testOptions in Test += Tests.Argument(TestFrameworks.Specs2, "tracefilter", "/.*specs2.*,.*mundane.testing.*")
   )
