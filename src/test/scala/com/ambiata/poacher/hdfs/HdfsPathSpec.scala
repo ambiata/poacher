@@ -16,9 +16,10 @@ import org.apache.hadoop.conf.Configuration
 import scala.io.Codec
 
 import org.specs2._
+import org.specs2.matcher.DisjunctionMatchers
 import scalaz._, Scalaz._, effect.Effect._
 
-class HdfsPathSpec extends Specification with ScalaCheck { def is = s2"""
+class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatchers { def is = s2"""
 
 
  HdfsPath
@@ -42,9 +43,40 @@ class HdfsPathSpec extends Specification with ScalaCheck { def is = s2"""
 
     ${ prop((l: Path) => HdfsPath(l).basename ==== l.basename) }
 
+ HdfsPath IO
+ ===========
+
+  HdfsPath should be able to determine files, directories and handle failure cases
+
+    ${ HdfsTemporary.random.path.flatMap(path => path.touch >> path.determine.map(_ must beFile)) }
+
+    ${ HdfsTemporary.random.path.flatMap(path => path.mkdirs >> path.determine.map(_ must beDirectory)) }
+
+    ${ HdfsTemporary.random.path.flatMap(path => path.determine.map(_ must beNone)) }
+
+    ${ HdfsPath(Path("")).determine.map(_ must beNone) }
+
+  HdfsPath can determine a file and handle failure cases
+
+    ${ HdfsTemporary.random.path.flatMap(path => path.touch >> path.determineFile) must beOk }
+
+    ${ HdfsTemporary.random.path.flatMap(path => path.mkdirs >> path.determineFile) must beFailWithMessage("Not a valid file") }
+
+    ${ HdfsTemporary.random.path.flatMap(path => path.determineFile) must beFailWithMessage("Not a valid File or Directory") }
+
+  HdfsPath can determine a directory and handle failure cases
+
+    ${ HdfsTemporary.random.path.flatMap(path => path.touch >> path.determineDirectory) must beFailWithMessage("Not a valid directory") }
+
+    ${ HdfsTemporary.random.path.flatMap(path => path.mkdirs >> path.determineDirectory) must beOk }
+
+    ${ HdfsTemporary.random.path.flatMap(path => path.determineDirectory) must beFailWithMessage("Not a valid File or Directory") }
+
 
 
 """
+  val beFile = beSome(be_-\/[HdfsFile])
+  val beDirectory = beSome(be_\/-[HdfsDirectory])
 
   implicit val BooleanMonoid: Monoid[Boolean] =
     scalaz.std.anyVal.booleanInstance.conjunction
