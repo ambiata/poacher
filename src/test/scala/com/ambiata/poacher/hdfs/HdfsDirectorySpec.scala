@@ -22,7 +22,7 @@ class HdfsDirectorySpec extends Specification with ScalaCheck { def is = s2"""
 
 
  HdfsDirectory
- ========
+ =============
 
   A HdfsDirectory can be created from
 
@@ -385,7 +385,4 @@ class HdfsDirectorySpec extends Specification with ScalaCheck { def is = s2"""
 
 
 """
-
-  implicit val BooleanMonoid: Monoid[Boolean] =
-    scalaz.std.anyVal.booleanInstance.conjunction
 }
