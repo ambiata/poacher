@@ -209,9 +209,9 @@ class HdfsDirectorySpec extends Specification with ScalaCheck { def is = s2"""
 
     Move a directory with multiple sub-directories and files to a path
 
-      ${ prop((v: DistinctPair[Component], local: HdfsTemporary) => for {
-           p <- local.path
-           d <- local.directory
+      ${ prop((v: DistinctPair[Component], h: HdfsTemporary) => for {
+           p <- h.path
+           d <- h.directory
            _ <- (d.toHdfsPath | v.first | v.second).touch
            _ <- (d.toHdfsPath | v.first | v.first | v.second).touch
            _ <- (d.toHdfsPath | v.second).touch

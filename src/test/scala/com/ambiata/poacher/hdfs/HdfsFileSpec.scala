@@ -24,9 +24,34 @@ class HdfsFileSpec extends Specification with ScalaCheck { def is = s2"""
  ========
 
   A HdfsFile can be created from
-    a String
+
+    a unsafe String
 
       ${ HdfsFile.unsafe("hello/world").path.path === "hello/world"  }
+
+    a String
+
+      ${ prop((h: HdfsTemporary) => for {
+           f <- h.file
+           d <- HdfsFile.fromString(f.path.path)
+         } yield d ==== f.some)
+       }
+
+    a Uri
+
+      ${ prop((h: HdfsTemporary) => for {
+           f <- h.file
+           d <- HdfsFile.fromURI(f.toHPath.toUri)
+         } yield d ==== f.some)
+       }
+
+    a List
+
+      ${ prop((h: HdfsTemporary) => for {
+           f <- h.file
+           d <- HdfsFile.fromList(Root, f.path.names)
+         } yield d ==== f.some)
+       }
 
     get the path as a string
 
