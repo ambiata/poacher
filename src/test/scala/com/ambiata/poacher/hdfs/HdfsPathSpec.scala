@@ -54,7 +54,7 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
 
     ${ HdfsTemporary.random.path.flatMap(path => path.determine.map(_ must beNone)) }
 
-    ${ HdfsPath(Path("")).determine.map(_ must beNone) }
+    ${ HdfsPath(Path("empty")).determine.map(_ must beNone) }
 
   HdfsPath can determine a file and handle failure cases
 
