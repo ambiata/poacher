@@ -58,19 +58,29 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
 
   HdfsPath can determine a file and handle failure cases
 
-    ${ HdfsTemporary.random.path.flatMap(path => path.touch >> path.determineFile) must beOk }
+    ${ prop((h: HdfsTemporary) => for {
+         p <- h.path
+         f <- p.write("")
+         r <- p.determineFile
+       } yield r ==== f)
+     }
 
-    ${ HdfsTemporary.random.path.flatMap(path => path.mkdirs >> path.determineFile) must beFailWithMessage("Not a valid file") }
+    ${ HdfsTemporary.random.path.flatMap(path => path.mkdirs >> path.determineFile) must beFail }
 
-    ${ HdfsTemporary.random.path.flatMap(path => path.determineFile) must beFailWithMessage("Not a valid File or Directory") }
+    ${ HdfsTemporary.random.path.flatMap(path => path.determineFile) must beFail }
 
   HdfsPath can determine a directory and handle failure cases
 
-    ${ HdfsTemporary.random.path.flatMap(path => path.touch >> path.determineDirectory) must beFailWithMessage("Not a valid directory") }
+    ${ HdfsTemporary.random.path.flatMap(path => path.touch >> path.determineDirectory) must beFail }
 
-    ${ HdfsTemporary.random.path.flatMap(path => path.mkdirs >> path.determineDirectory) must beOk }
+    ${ prop((h: HdfsTemporary) => for {
+         p <- h.path
+         f <- p.mkdirs
+         r <- p.determineDirectory
+       } yield r ==== f)
+     }
 
-    ${ HdfsTemporary.random.path.flatMap(path => path.determineDirectory) must beFailWithMessage("Not a valid File or Directory") }
+    ${ HdfsTemporary.random.path.flatMap(path => path.determineDirectory) must beFail }
 
 
 
