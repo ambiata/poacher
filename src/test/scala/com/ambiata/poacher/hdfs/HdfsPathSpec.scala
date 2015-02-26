@@ -85,6 +85,13 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
        } yield r ==== f)
      }
 
+    ${ prop((h: HdfsTemporary) => for {
+         p <- h.path
+         _ <- p.mkdirs
+         r <- p.isDirectory
+       } yield r ==== true)
+     }
+
     ${ HdfsTemporary.random.path.flatMap(path => path.determineDirectory) must beFail }
 
   HdfsPath should be able to perform these basic operations
