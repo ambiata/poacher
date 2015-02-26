@@ -59,8 +59,6 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
 
       ${ HdfsPath.fromURI(new URI("hello/world")).map(_.path.path) === "hello/world".some }
 
-      ${ HdfsPath.fromURI(new URI(":///hello/world")).map(_.path.path) === "hello/world".some }
-
       ${ HdfsPath.fromURI(new URI("hdfs:///hello/world")).map(_.path.path) === "/hello/world".some }
 
       ${ HdfsPath.fromURI(new URI("s3:///hello/world")) must beNone }
