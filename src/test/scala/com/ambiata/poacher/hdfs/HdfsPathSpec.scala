@@ -213,6 +213,63 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
        } yield r ==== None)
      }
 
+  HdfsPath should be able to calculate the size of files/directories/paths
+
+    Size of a single file
+
+      ${ prop((v: S, l: HdfsTemporary) => for {
+           p <- l.path
+           _ <- p.write(v.value)
+           r <- p.size
+         } yield r ==== v.value.getBytes.length.bytes.some)
+       }
+
+    Size of a directory
+
+      ${ prop((f: DistinctPair[Component], v: DistinctPair[S], l: HdfsTemporary) => for {
+           p <- l.path
+           _ <- (p | f.first).write(v.first.value)
+           _ <- (p | f.second).write(v.second.value)
+           r <- p.size
+         } yield r ==== (v.first.value.getBytes.length + v.second.value.getBytes.length).bytes.some)
+       }
+
+
+  HdfsPath should be able to count the number of files within a path
+
+    A single file
+
+      ${ prop((h: HdfsTemporary) => for {
+           p <- h.path
+           _ <- p.write("")
+           r <- p.numberOfFiles
+         } yield r ==== 1.some)
+       }
+
+    Calculate the number of files in a directory
+
+      ${ prop((v: DistinctPair[Component], h: HdfsTemporary) => for {
+           p <- h.path
+           _ <- p.mkdirs
+           _ <- (p | v.first).touch
+           _ <- (p | v.second).touch
+           r <- p.numberOfFiles
+         } yield r ==== 2.some)
+       }
+
+    Calculate the number of files in a directory with sub-directories
+
+      ${ prop((v: DistinctPair[Component], h: HdfsTemporary) => for {
+           p <- h.path
+           _ <- p.mkdirs
+           _ <- (p | v.first | v.second).touch
+           _ <- (p | v.first | v.first | v.second).touch
+           _ <- (p | v.first | v.first | v.first).touch
+           _ <- (p | v.second).touch
+           r <- p.numberOfFiles
+         } yield r ==== 4.some)
+       }
+
 
   HdfsPath should be able to create directories
 
@@ -422,8 +479,8 @@ nhibberd
        }
 
 
-- [ ] size
-- [ ] number of files
+- [x] size
+- [x] number of files
 - [ ] writeWithMode ???
 - [ ] move
 - [ ] copy
