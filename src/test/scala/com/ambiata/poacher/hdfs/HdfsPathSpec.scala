@@ -98,10 +98,10 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
       ${ prop((l: HdfsTemporary) => l.path.flatMap(_.exists.map(_ ==== false))) }
 
       ${ prop((l: HdfsTemporary) => { var i = 0; l.path.flatMap(p => p.touch >> p.doesExist("",
-           Hdfs.io({ i = 1; i })).map(_ ==== 1)) }) }
+           Hdfs.io(i = 1)).map(_ => i ==== 1)) }) }
 
       ${ prop((l: HdfsTemporary) => { var i = 0; l.path.flatMap(p => p.touch >>
-           p.whenExists(Hdfs.io(i = 1).map(_ => i ==== 1))) }) }
+           p.whenExists(Hdfs.io(i = 1)).as(i).map(_ => i ==== 1)) }) }
 
       ${ prop((l: HdfsTemporary) => { var i = 0; l.path.flatMap(_.doesNotExist("",
            Hdfs.io({ i = 1; i })).map(_ ==== 1)) }) }
