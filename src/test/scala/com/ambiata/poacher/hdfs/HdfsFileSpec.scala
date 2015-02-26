@@ -125,27 +125,6 @@ class HdfsFileSpec extends Specification with ScalaCheck { def is = s2"""
 
       ${ var i = 0; HdfsFile.unsafe("test").doesNotExist("", Hdfs.io({ i = 1; i })).map(_ ==== 1) }
 
-
-  HdfsFile should be able to touch files which will update the last modified time, but not affect the content.
-
-    ${ prop((v: S, l: HdfsTemporary) => for {
-         p <- l.path
-         _ <- p.write(v.value)
-         _ <- p.write("")
-         r <- p.readOrFail
-       } yield r ==== v.value)
-     }
-
-    ${ prop((l: HdfsTemporary) => for {
-         p <- l.path
-         f <- p.write("")
-         b <- f.lastModified
-         _ <- Hdfs.safe(Thread.sleep(1100))
-         _ <- p.write("")
-         a <- f.lastModified
-       } yield b must be_<(a)).set(minTestsOk = 3)
-     }
-
   HdfsFile should be able to perform a checksum
 
     ${ prop((s: S, l: HdfsTemporary) => for {
@@ -162,7 +141,7 @@ class HdfsFileSpec extends Specification with ScalaCheck { def is = s2"""
      }
 
 
-  HdfsTemporary should be able to count the number of lines in a file
+  HdfsFile should be able to count the number of lines in a file
 
     ${ prop((s: List[Int], l: HdfsTemporary) => for {
          p <- l.path
@@ -179,7 +158,7 @@ class HdfsFileSpec extends Specification with ScalaCheck { def is = s2"""
      }
 
 
-  HdfsFile should be able to readd different content from files using different methods
+  HdfsFile should be able to read different content from files using different methods
 
     Read a string from a file
 

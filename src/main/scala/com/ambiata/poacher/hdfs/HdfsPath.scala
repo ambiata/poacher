@@ -173,6 +173,17 @@ case class HdfsPath(path: Path) {
   def mkdirs: Hdfs[HdfsDirectory] =
     withFileSystem(_.mkdirs(toHPath)).as(HdfsDirectory.unsafe(path.path))
 
+  /**
+    *  Create a new dir, and if it fails, retry with a new name. This should be atomic
+    *
+    *  Steps:
+    *  1. Create a tmp base dir under /tmp/UUID.randomUUID
+    *  2. Create the parent destination dir if it doesn't exist
+    *  3. In a loop:
+    *    1. Create a new dir under the tmp dir with the name of the destination dir
+    *    2. Try moving the new dir to the parent destination dir (using FileSystem.rename)
+    *    3. If the move fails, get the next name and try again
+    */
   def mkdirsWithRetry: Hdfs[HdfsDirectory] =
     ???
 
