@@ -13,6 +13,8 @@ import com.ambiata.poacher.hdfs.HdfsMatcher._
 
 import org.apache.hadoop.conf.Configuration
 
+import java.net.URI
+
 import scala.io.Codec
 
 import org.specs2._
@@ -42,6 +44,27 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
     ${ prop((l: Path) => HdfsPath(l).dirname.path ==== l.dirname) }
 
     ${ prop((l: Path) => HdfsPath(l).basename ==== l.basename) }
+
+  A HdfsPath can be created from
+
+    a String
+
+      ${ HdfsPath.fromString("hello/world").path.path === "hello/world" }
+
+    a Path
+
+      ${ HdfsPath(Path("hello/world")).path === Path("hello/world") }
+
+    a Uri
+
+      ${ HdfsPath.fromURI(new URI("hello/world")).map(_.path.path) === "hello/world".some }
+
+      ${ HdfsPath.fromURI(new URI(":///hello/world")).map(_.path.path) === "hello/world".some }
+
+      ${ HdfsPath.fromURI(new URI("hdfs:///hello/world")).map(_.path.path) === "/hello/world".some }
+
+      ${ HdfsPath.fromURI(new URI("s3:///hello/world")) must beNone }
+
 
   A list of HdfsPath can be ordered
 
@@ -192,6 +215,23 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
        } yield r ==== None)
      }
 
+
+  HdfsPath should be able to create directories
+
+      ${ prop((h: HdfsTemporary) => for {
+           p <- h.path
+           _ <- p.mkdirs
+           r <- p.isDirectory
+         } yield r ==== true)
+       }
+
+nhibberd TODO
+      { prop((h: HdfsTemporary) => for {
+           p <- h.path
+           _ <- p.mkdirWithRetry
+         } yield r ==== )
+       }
+
   HdfsPath should be able to read and write to a file. These operations should be symmetrical
 
     Write a string to a file and read it back
@@ -298,7 +338,99 @@ nhibberd
 
       ${ prop((l: HdfsTemporary) => l.path.flatMap(_.readOrFail) must beFail) }
 
+    Write stream
 
+      ${ prop((s: S, l: HdfsTemporary) => for {
+           p <- l.path
+           a <- p.write(s.value)
+           b <- l.path
+           _ <- Hdfs.using(a.toInputStream)(in => b.writeStream(in))
+           r <- b.readOrFail
+         } yield r ==== s.value)
+       }
+
+  HdfsPath should be able to overwrite different content to files
+
+    Overwrite a string in a file that exists and has content
+
+      ${ prop((d: DistinctPair[S], l: HdfsTemporary) => for {
+           p <- l.path
+           _ <- p.write(d.first.value)
+           _ <- p.overwrite(d.second.value)
+           r <- p.readOrFail
+         } yield r ==== d.second.value)
+       }
+
+    Overwrite a string in a file that doesn't exist
+
+      ${ prop((d: DistinctPair[S], l: HdfsTemporary) => for {
+           p <- l.path
+           _ <- p.write(d.first.value)
+           _ <- p.delete
+           _ <- p.overwrite(d.second.value)
+           r <- p.read
+         } yield r ==== d.second.value.some)
+       }
+
+    Overwrite a string with a specific encoding in a file that exists and has content
+
+      ${ prop((a: EncodingS, b: EncodingS, l: HdfsTemporary) => for {
+           p <- l.path
+           _ <- p.writeWithEncoding(a.value, a.codec)
+           _ <- p.overwriteWithEncoding(b.value, b.codec)
+           r <- p.readWithEncoding(b.codec)
+         } yield r ==== b.value.some)
+       }
+
+    Overwrite a list of strings in a file that exists and has content
+
+      ${ prop((i: S, s: List[N], l: HdfsTemporary) => for {
+           p <- l.path
+           _ <- p.write(i.value)
+           _ <- p.overwriteLines(s.map(_.value))
+           r <- p.readLines
+         } yield r ==== s.map(_.value).some)
+       }
+
+    Overwrite a list of strings with a specific encoding in a file that exists and has content
+
+      ${ prop((a: EncodingListN, b: EncodingListN, c: Codec, l: HdfsTemporary) => for {
+           p <- l.path
+           _ <- p.writeLinesWithEncoding(a.value, a.codec)
+           _ <- p.overwriteLinesWithEncoding(b.value, b.codec)
+           r <- p.readLinesWithEncoding(b.codec)
+         } yield r ==== b.value.some)
+       }
+
+    Overwrite bytes in a file that exists and has content
+
+      ${ prop((i: Array[Byte], s: Array[Byte], l: HdfsTemporary) => for {
+           p <- l.path
+           _ <- p.writeBytes(i)
+           _ <- p.overwriteBytes(s)
+           r <- p.readBytes
+         } yield r.map(_.toList) ==== s.toList.some)
+       }
+
+    Overwrite stream
+
+      ${ prop((s: DistinctPair[S], l: HdfsTemporary) => for {
+           p <- l.path
+           _ <- p.write(s.first.value)
+           b <- l.fileWithContent(s.second.value)
+           _ <- Hdfs.using(p.toInputStream)(in => b.toHdfsPath.overwriteStream(in))
+           r <- b.readOrFail
+         } yield r ==== s.first.value)
+       }
+
+
+- [ ] size
+- [ ] number of files
+- [ ] writeWithMode ???
+- [ ] move
+- [ ] copy
+- [ ] list
+- [ ] glob
 
 """
   val beFile = beSome(be_-\/[HdfsFile])
