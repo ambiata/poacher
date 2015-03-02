@@ -421,7 +421,7 @@ nhibberd
 
     Can write a string to files with different modes
 
-foo      ${ prop((s: DistinctPair[S], l: HdfsTemporary) => for {
+      ${ prop((s: DistinctPair[S], l: HdfsTemporary) => for {
            p <- l.path
            _ <- p.write(s.first.value)
            _ <- p.writeWithMode(s.second.value, HdfsWriteMode.Overwrite)
@@ -429,7 +429,7 @@ foo      ${ prop((s: DistinctPair[S], l: HdfsTemporary) => for {
          } yield r ==== s.second.value)
        }
 
-foo      ${ prop((s: DistinctPair[S], l: HdfsTemporary) => (for {
+      ${ prop((s: DistinctPair[S], l: HdfsTemporary) => (for {
            p <- l.path
            _ <- p.write(s.first.value)
            _ <- p.writeWithMode(s.second.value, HdfsWriteMode.Fail)
@@ -438,7 +438,7 @@ foo      ${ prop((s: DistinctPair[S], l: HdfsTemporary) => (for {
 
     Can write a string to files with different modes using different encodings
 
-foo      ${ prop((s: DistinctPair[EncodingS], l: HdfsTemporary) => for {
+      ${ prop((s: DistinctPair[EncodingS], l: HdfsTemporary) => for {
            p <- l.path
            _ <- p.write(s.first.value)
            _ <- p.writeWithEncodingMode(s.second.value, s.second.codec, HdfsWriteMode.Overwrite)
@@ -446,7 +446,7 @@ foo      ${ prop((s: DistinctPair[EncodingS], l: HdfsTemporary) => for {
          } yield r ==== s.second.value.some)
        }
 
-foo      ${ prop((s: DistinctPair[EncodingS], l: HdfsTemporary) => (for {
+      ${ prop((s: DistinctPair[EncodingS], l: HdfsTemporary) => (for {
            p <- l.path
            _ <- p.write(s.first.value)
            _ <- p.writeWithEncodingMode(s.second.value, s.second.codec, HdfsWriteMode.Fail)
@@ -455,7 +455,7 @@ foo      ${ prop((s: DistinctPair[EncodingS], l: HdfsTemporary) => (for {
 
     Can write lines to a file with different modes
 
-foo      ${ prop((a: List[N], b: List[N], l: HdfsTemporary) => for {
+      ${ prop((a: List[N], b: List[N], l: HdfsTemporary) => for {
            p <- l.path
            _ <- p.writeLines(a.map(_.value))
            _ <- p.writeLinesWithMode(b.map(_.value), HdfsWriteMode.Overwrite)
@@ -463,7 +463,7 @@ foo      ${ prop((a: List[N], b: List[N], l: HdfsTemporary) => for {
          } yield r ==== (b.map(_.value).some))
        }
 
-foo      ${ prop((a: List[N], b: List[N], l: HdfsTemporary) => (for {
+      ${ prop((a: List[N], b: List[N], l: HdfsTemporary) => (for {
            p <- l.path
            _ <- p.writeLines(a.map(_.value))
            _ <- p.writeLinesWithMode(b.map(_.value), HdfsWriteMode.Fail)
@@ -472,7 +472,7 @@ foo      ${ prop((a: List[N], b: List[N], l: HdfsTemporary) => (for {
 
     Can write lines with different Codec's and Mode's
 
-foo      ${ prop((a: EncodingListN, b: EncodingListN, l: HdfsTemporary) => for {
+      ${ prop((a: EncodingListN, b: EncodingListN, l: HdfsTemporary) => for {
            p <- l.path
            _ <- p.writeLinesWithEncoding(a.value, a.codec)
            _ <- p.writeLinesWithEncodingMode(b.value, b.codec, HdfsWriteMode.Overwrite)
@@ -480,7 +480,7 @@ foo      ${ prop((a: EncodingListN, b: EncodingListN, l: HdfsTemporary) => for {
          } yield r ==== b.value.some)
        }
 
-foo      ${ prop((a: EncodingListN, b: EncodingListN, l: HdfsTemporary) => (for {
+      ${ prop((a: EncodingListN, b: EncodingListN, l: HdfsTemporary) => (for {
            p <- l.path
            _ <- p.writeLinesWithEncoding(a.value, a.codec)
            _ <- p.writeLinesWithEncodingMode(b.value, b.codec, HdfsWriteMode.Fail)
@@ -489,7 +489,7 @@ foo      ${ prop((a: EncodingListN, b: EncodingListN, l: HdfsTemporary) => (for 
 
     Can write bytes with different Mode's
 
-foo      ${ prop((a: Array[Byte], b: Array[Byte], l: HdfsTemporary) => for {
+      ${ prop((a: Array[Byte], b: Array[Byte], l: HdfsTemporary) => for {
            p <- l.path
            _ <- p.writeBytes(a)
            _ <- p.writeBytesWithMode(b, HdfsWriteMode.Overwrite)
@@ -497,7 +497,7 @@ foo      ${ prop((a: Array[Byte], b: Array[Byte], l: HdfsTemporary) => for {
          } yield r.map(_.toList) ==== b.toList.some)
        }
 
-foo      ${ prop((a: Array[Byte], l: HdfsTemporary) => (for {
+      ${ prop((a: Array[Byte], l: HdfsTemporary) => (for {
            p <- l.path
            _ <- p.writeBytes(a)
            _ <- p.writeBytesWithMode(a, HdfsWriteMode.Fail)
@@ -583,7 +583,7 @@ foo      ${ prop((a: Array[Byte], l: HdfsTemporary) => (for {
 
     Move a single file to a path
 
-mv      ${ prop((l: HdfsTemporary) => for {
+      ${ prop((l: HdfsTemporary) => for {
            p <- l.path
            d <- l.path
            _ <- p.touch
@@ -595,7 +595,7 @@ mv      ${ prop((l: HdfsTemporary) => for {
 
     Move a single file to a directory
 
-mv      ${ prop((v: Component, l: HdfsTemporary) => for {
+      ${ prop((v: Component, l: HdfsTemporary) => for {
            p <- l.path
            d <- l.directory
            _ <- (p | v).touch
@@ -607,7 +607,7 @@ mv      ${ prop((v: Component, l: HdfsTemporary) => for {
 
     Move a single file to a file that exists should fail
 
-mv      ${ prop((v: Component, l: HdfsTemporary) => (for {
+      ${ prop((v: Component, l: HdfsTemporary) => (for {
            p <- l.path
            d <- l.path
            _ <- (p | v).touch
@@ -618,7 +618,7 @@ mv      ${ prop((v: Component, l: HdfsTemporary) => (for {
 
     Move a directory to a path
 
-mv      ${ prop((l: HdfsTemporary) => for {
+      ${ prop((l: HdfsTemporary) => for {
            p <- l.path
            d <- l.path
            _ <- p.mkdirs
@@ -630,7 +630,7 @@ mv      ${ prop((l: HdfsTemporary) => for {
 
     Move a directory to a directory
 
-mv      ${ prop((v: DistinctPair[Component], l: HdfsTemporary) => for {
+      ${ prop((v: DistinctPair[Component], l: HdfsTemporary) => for {
            p <- l.path
            d <- l.path
            _ <- (p | v.first | v.second).touch
@@ -643,7 +643,7 @@ mv      ${ prop((v: DistinctPair[Component], l: HdfsTemporary) => for {
 
     Move a directory to a file that exists should fail
 
-mv      ${ prop((v: Component, l: HdfsTemporary) => (for {
+      ${ prop((v: Component, l: HdfsTemporary) => (for {
            p <- l.path
            d <- l.path
            _ <- p.mkdirs
@@ -652,6 +652,53 @@ mv      ${ prop((v: Component, l: HdfsTemporary) => (for {
          } yield ()) must beFail)
        }
 
+
+  HdfsPath should be able to copy files/directories/paths
+
+    Copy a single file to a path
+
+cp      ${ prop((l: HdfsTemporary) => for {
+           p <- l.path
+           d <- l.path
+           _ <- p.touch
+           _ <- p.copy(d)
+           b <- p.exists
+           a <- d.exists
+         } yield b -> a ==== true -> true)
+       }
+
+    Copy a single file to a directory
+
+cp      ${ prop((v: Component, l: HdfsTemporary) => for {
+           p <- l.path
+           d <- l.directory
+           _ <- (p | v).touch
+           _ <- (p | v).copy(d.toHdfsPath)
+           b <- (p | v).exists
+           a <- (d.toHdfsPath | v).exists
+         } yield b -> a ==== true -> true)
+       }
+
+    Copy a single file to a file that exists should file
+
+cp      ${ prop((l: HdfsTemporary) => (for {
+           p <- l.path
+           d <- l.path
+           _ <- p.touch
+           _ <- d.touch
+           _ <- p.copy(d)
+         } yield ()) must beFail)
+       }
+
+    Copy a directory to a path should be an unsupported operation
+
+cp      ${ prop((l: HdfsTemporary) => (for {
+           p <- l.path
+           d <- l.path
+           _ <- p.mkdirs
+          _ <- p.copy(d)
+         } yield ()) must beFail)
+       }
 
 
   HdfsPath should be able to list files/directories/paths at a single level
