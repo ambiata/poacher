@@ -80,6 +80,10 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
 
     ${ HdfsTemporary.random.path.flatMap(path => path.determine.map(_ must beNone)) }
 
+    ${ HdfsTemporary.random.path.flatMap(path => path.mkdirs >> path.touchDetermine.map(_.swap must be_-\/[HdfsDirectory])) }
+
+    ${ HdfsTemporary.random.path.flatMap(path => path.touchDetermine.map(_ must be_-\/[HdfsFile])) }
+
     ${ HdfsPath(Path("empty")).determine.map(_ must beNone) }
 
   HdfsPath can determine a file and handle failure cases
@@ -332,6 +336,15 @@ nhibberd TODO
          } yield r ==== v.value.some)
        }
 
+    Write with an output stream
+
+      ${ prop((s: S, l: HdfsTemporary) => for {
+           p <- l.path
+           _ <- p.writeWith(o => Hdfs.fromRIO(Streams.write(o, s.value)))
+           r <- p.readOrFail
+         } yield r ==== s.value)
+       }
+
     Read a file using an InputStream
 
       ${ prop((s: S, l: HdfsTemporary) => {
@@ -403,6 +416,94 @@ nhibberd
            r <- b.readOrFail
          } yield r ==== s.value)
        }
+
+  HdfsPath should be able to write to files with different modes
+
+    Can write a string to files with different modes
+
+foo      ${ prop((s: DistinctPair[S], l: HdfsTemporary) => for {
+           p <- l.path
+           _ <- p.write(s.first.value)
+           _ <- p.writeWithMode(s.second.value, HdfsWriteMode.Overwrite)
+           r <- p.readOrFail
+         } yield r ==== s.second.value)
+       }
+
+foo      ${ prop((s: DistinctPair[S], l: HdfsTemporary) => (for {
+           p <- l.path
+           _ <- p.write(s.first.value)
+           _ <- p.writeWithMode(s.second.value, HdfsWriteMode.Fail)
+         } yield ()) must beFail)
+       }
+
+    Can write a string to files with different modes using different encodings
+
+foo      ${ prop((s: DistinctPair[EncodingS], l: HdfsTemporary) => for {
+           p <- l.path
+           _ <- p.write(s.first.value)
+           _ <- p.writeWithEncodingMode(s.second.value, s.second.codec, HdfsWriteMode.Overwrite)
+           r <- p.readWithEncoding(s.second.codec)
+         } yield r ==== s.second.value.some)
+       }
+
+foo      ${ prop((s: DistinctPair[EncodingS], l: HdfsTemporary) => (for {
+           p <- l.path
+           _ <- p.write(s.first.value)
+           _ <- p.writeWithEncodingMode(s.second.value, s.second.codec, HdfsWriteMode.Fail)
+         } yield ()) must beFail)
+       }
+
+    Can write lines to a file with different modes
+
+foo      ${ prop((a: List[N], b: List[N], l: HdfsTemporary) => for {
+           p <- l.path
+           _ <- p.writeLines(a.map(_.value))
+           _ <- p.writeLinesWithMode(b.map(_.value), HdfsWriteMode.Overwrite)
+           r <- p.readLines
+         } yield r ==== (b.map(_.value).some))
+       }
+
+foo      ${ prop((a: List[N], b: List[N], l: HdfsTemporary) => (for {
+           p <- l.path
+           _ <- p.writeLines(a.map(_.value))
+           _ <- p.writeLinesWithMode(b.map(_.value), HdfsWriteMode.Fail)
+         } yield ()) must beFail)
+       }
+
+    Can write lines with different Codec's and Mode's
+
+foo      ${ prop((a: EncodingListN, b: EncodingListN, l: HdfsTemporary) => for {
+           p <- l.path
+           _ <- p.writeLinesWithEncoding(a.value, a.codec)
+           _ <- p.writeLinesWithEncodingMode(b.value, b.codec, HdfsWriteMode.Overwrite)
+           r <- p.readLinesWithEncoding(b.codec)
+         } yield r ==== b.value.some)
+       }
+
+foo      ${ prop((a: EncodingListN, b: EncodingListN, l: HdfsTemporary) => (for {
+           p <- l.path
+           _ <- p.writeLinesWithEncoding(a.value, a.codec)
+           _ <- p.writeLinesWithEncodingMode(b.value, b.codec, HdfsWriteMode.Fail)
+         } yield ()) must beFail)
+       }
+
+    Can write bytes with different Mode's
+
+foo      ${ prop((a: Array[Byte], b: Array[Byte], l: HdfsTemporary) => for {
+           p <- l.path
+           _ <- p.writeBytes(a)
+           _ <- p.writeBytesWithMode(b, HdfsWriteMode.Overwrite)
+           r <- p.readBytes
+         } yield r.map(_.toList) ==== b.toList.some)
+       }
+
+foo      ${ prop((a: Array[Byte], l: HdfsTemporary) => (for {
+           p <- l.path
+           _ <- p.writeBytes(a)
+           _ <- p.writeBytesWithMode(a, HdfsWriteMode.Fail)
+         } yield ()) must beFail)
+       }
+
 
   HdfsPath should be able to overwrite different content to files
 
@@ -478,10 +579,138 @@ nhibberd
          } yield r ==== s.first.value)
        }
 
+  HdfsPath should be able to move files/directories/paths
 
-- [x] size
-- [x] number of files
-- [ ] writeWithMode ???
+    Move a single file to a path
+
+mv      ${ prop((l: HdfsTemporary) => for {
+           p <- l.path
+           d <- l.path
+           _ <- p.touch
+           _ <- p.move(d)
+           b <- p.exists
+           a <- d.exists
+         } yield b -> a ==== false -> true)
+       }
+
+    Move a single file to a directory
+
+mv      ${ prop((v: Component, l: HdfsTemporary) => for {
+           p <- l.path
+           d <- l.directory
+           _ <- (p | v).touch
+           _ <- (p | v).move(d.toHdfsPath)
+           b <- (p | v).exists
+           a <- (d.toHdfsPath | v).exists
+         } yield b -> a ==== false -> true)
+       }
+
+    Move a single file to a file that exists should fail
+
+mv      ${ prop((v: Component, l: HdfsTemporary) => (for {
+           p <- l.path
+           d <- l.path
+           _ <- (p | v).touch
+           _ <- d.touch
+           _ <- p.move(d)
+         } yield ()) must beFail)
+       }
+
+    Move a directory to a path
+
+mv      ${ prop((l: HdfsTemporary) => for {
+           p <- l.path
+           d <- l.path
+           _ <- p.mkdirs
+           _ <- p.move(d)
+           b <- p.exists
+           a <- d.exists
+         } yield b -> a ==== false -> true)
+       }
+
+    Move a directory to a directory
+
+mv      ${ prop((v: DistinctPair[Component], l: HdfsTemporary) => for {
+           p <- l.path
+           d <- l.path
+           _ <- (p | v.first | v.second).touch
+           _ <- d.mkdirs
+           _ <- (p | v.first).move(d)
+           b <- (p | v.first).exists
+           a <- (d | v.first | v.second).exists
+         } yield b -> a ==== false -> true)
+       }
+
+    Move a directory to a file that exists should fail
+
+mv      ${ prop((v: Component, l: HdfsTemporary) => (for {
+           p <- l.path
+           d <- l.path
+           _ <- p.mkdirs
+           _ <- d.touch
+           _ <- p.move(d)
+         } yield ()) must beFail)
+       }
+
+
+
+  HdfsPath should be able to list files/directories/paths at a single level
+
+    List a single file
+
+      ...
+
+    'listFiles' is consistent with 'determineFile'
+
+      ...
+
+    List multiple files
+
+      ...
+
+    List a directory
+
+      ...
+
+    List multiple paths
+
+      ...
+
+
+  HdfsPath should be able to list files/directories/paths recursively
+
+    List files
+
+      ...
+
+    List directories
+
+      ...
+
+    List paths
+
+      ...
+
+  HdfsPath should be able to glob files/directories/paths at a single level
+
+    ...
+
+  HdfsPath should be able to glob files/directories/paths recursively
+
+    Glob files
+
+      ...
+
+    Glob directories
+
+      ...
+
+    Glob paths
+
+      ...
+
+
+
 - [ ] move
 - [ ] copy
 - [ ] list
