@@ -224,8 +224,8 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
       ${ prop((v: S, l: HdfsTemporary) => for {
            p <- l.path
            _ <- p.write(v.value)
-           r <- p.size
-         } yield r ==== v.value.getBytes.length.bytes.some)
+           r <- p.sizeOrFail
+         } yield r ==== v.value.getBytes.length.bytes)
        }
 
     Size of a directory
@@ -657,7 +657,7 @@ nhibberd
 
     Copy a single file to a path
 
-cp      ${ prop((l: HdfsTemporary) => for {
+      ${ prop((l: HdfsTemporary) => for {
            p <- l.path
            d <- l.path
            _ <- p.touch
@@ -669,7 +669,7 @@ cp      ${ prop((l: HdfsTemporary) => for {
 
     Copy a single file to a directory
 
-cp      ${ prop((v: Component, l: HdfsTemporary) => for {
+      ${ prop((v: Component, l: HdfsTemporary) => for {
            p <- l.path
            d <- l.directory
            _ <- (p | v).touch
@@ -681,7 +681,7 @@ cp      ${ prop((v: Component, l: HdfsTemporary) => for {
 
     Copy a single file to a file that exists should file
 
-cp      ${ prop((l: HdfsTemporary) => (for {
+      ${ prop((l: HdfsTemporary) => (for {
            p <- l.path
            d <- l.path
            _ <- p.touch
@@ -692,7 +692,7 @@ cp      ${ prop((l: HdfsTemporary) => (for {
 
     Copy a directory to a path should be an unsupported operation
 
-cp      ${ prop((l: HdfsTemporary) => (for {
+      ${ prop((l: HdfsTemporary) => (for {
            p <- l.path
            d <- l.path
            _ <- p.mkdirs
@@ -756,10 +756,6 @@ cp      ${ prop((l: HdfsTemporary) => (for {
 
       ...
 
-
-
-- [ ] move
-- [ ] copy
 - [ ] list
 - [ ] glob
 
