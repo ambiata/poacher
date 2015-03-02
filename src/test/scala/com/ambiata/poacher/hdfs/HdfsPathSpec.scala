@@ -86,6 +86,7 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
 
     ${ HdfsPath(Path("empty")).determine.map(_ must beNone) }
 
+
   HdfsPath can determine a file and handle failure cases
 
     ${ prop((h: HdfsTemporary) => for {
@@ -98,6 +99,7 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
     ${ HdfsTemporary.random.path.flatMap(path => path.mkdirs >> path.determineFile) must beFail }
 
     ${ HdfsTemporary.random.path.flatMap(path => path.determineFile) must beFail }
+
 
   HdfsPath can determine a directory and handle failure cases
 
@@ -118,6 +120,7 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
      }
 
     ${ HdfsTemporary.random.path.flatMap(path => path.determineDirectory) must beFail }
+
 
   HdfsPath should be able to perform these basic operations
 
@@ -202,6 +205,7 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
        } yield r ==== None)
      }
 
+
   HdfsPath should be able to count the number of lines in a file
 
     ${ prop((s: List[Int], l: HdfsTemporary) => for {
@@ -216,6 +220,7 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
          r <- p.lineCount
        } yield r ==== None)
      }
+
 
   HdfsPath should be able to calculate the size of files/directories/paths
 
