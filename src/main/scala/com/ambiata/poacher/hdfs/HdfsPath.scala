@@ -184,10 +184,54 @@ case class HdfsPath(path: Path) {
     *    2. Try moving the new dir to the parent destination dir (using FileSystem.rename)
     *    3. If the move fails, get the next name and try again
     */
-  def mkdirsWithRetry: Hdfs[HdfsDirectory] =
-    ???
+  def mkdirsWithRetry(nextName: String => Option[String]): Hdfs[Option[HdfsDirectory]] =
+    withFileSystem(fs => {
+      val p = toHPath
+      val tmp = new HPath("/tmp", java.util.UUID.randomUUID.toString)
+      fs.mkdirs(tmp)
+      val parent = p.getParent
+      fs.mkdirs(parent)
+      val names = Stream.iterate[Option[String]](Some(p.getName))(_.flatMap(nextName))
+      val x: Option[String] = names.dropWhile({
+        case None    => false
+        case Some(n) =>
+          val tp = new HPath(tmp, n)
+          try { !fs.mkdirs(tp) || !fs.rename(tp, parent) }
+          // hack to catch local mode inconsistency
+          catch { case ioe: IOException =>
+            if(ioe.getMessage.startsWith("Target") && ioe.getMessage.endsWith("is a directory")) true
+            else throw ioe
+          }
+      }).headOption.flatten
+      x.map(n => HdfsDirectory.unsafe(new HPath(parent, n).toString))
+    })
 
-  def writeWith[A](f: OutputStream => Hdfs[A]): Hdfs[A] = // todo not sure about this
+  def mkdirsWithRetryX(nextName: Component => Option[Component]): Hdfs[Option[HdfsDirectory]] = for {
+    z <- Hdfs.filesystem
+    tmp = HdfsPath.fromString("/tmp") /- java.util.UUID.randomUUID.toString
+    _ <- tmp.mkdirs
+    parent <- path.parent match {
+      case None =>
+        Hdfs.fail("")
+      case Some(p) =>
+        HdfsPath(p).mkdirs
+    }
+    names = Stream.iterate[Option[Component]](basename)(_.flatMap(nextName))
+    s <- Hdfs.safe[Option[Component]](names.dropWhile({
+      case None => false
+      case Some(n) =>
+        val tp = tmp | n
+        try { !z.mkdirs(tp.toHPath) || !z.rename(tp.toHPath, parent.toHPath) }
+        // hack to catch local mode inconsistency
+        catch { case ioe: IOException =>
+          if(ioe.getMessage.startsWith("Target") && ioe.getMessage.endsWith("is a directory")) true
+          else throw ioe
+        }
+    }).headOption.flatten)
+    r = s.map(n => HdfsDirectory.unsafe((parent.toHdfsPath | n).path.path))
+  } yield r
+
+  def writeWith[A](f: OutputStream => Hdfs[A]): Hdfs[A] =
     Hdfs.using(toOutputStream)(o => f(o))
 
   def touch: Hdfs[Unit] = for {
@@ -352,8 +396,7 @@ case class HdfsPath(path: Path) {
 
 object HdfsPath {
   def fromPath(p: HPath): HdfsPath =
-    fromString(p.toUri.getPath) //nb: toString adds 'file:/$path'
-//    fromString(p.toString)
+    fromString(p.toUri.getPath)
 
   def fromString(s: String): HdfsPath =
     HdfsPath(Path(s))

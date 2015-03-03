@@ -761,6 +761,7 @@ nhibberd
 
       ...
 
+- [ ] mkdirRetry
 - [ ] list
 - [ ] glob
 
