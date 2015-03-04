@@ -122,7 +122,7 @@ class HdfsDirectorySpec extends Specification with ScalaCheck { def is = s2"""
 
       ${ prop((h: HdfsTemporary) => (for {
            p <- h.path
-           d <- p.mkdirs
+           d <- p.mkdirsOrFail
            _ <- d.delete
            _ <- p.write("")
            e <- d.exists
@@ -329,7 +329,7 @@ class HdfsDirectorySpec extends Specification with ScalaCheck { def is = s2"""
       ${ prop((v: DistinctPair[Component], h: HdfsTemporary) => for {
            d <- h.directory
            _ <- (d.toHdfsPath | v.first).touch
-           e <- (d.toHdfsPath | v.second).mkdirs
+           e <- (d.toHdfsPath | v.second).mkdirsOrFail
            r <- d.listDirectories
          } yield r ==== List(e))
        }
