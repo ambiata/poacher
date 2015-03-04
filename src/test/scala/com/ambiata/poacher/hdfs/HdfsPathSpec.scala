@@ -297,12 +297,11 @@ nhibberd TODO
          } yield r ==== true)
        }
 
-foo      ${ prop((n: NonEmptyString, h: HdfsTemporary) => for {
+foo      ${ prop((n: Int, h: HdfsTemporary) => for {
            p <- h.path
            _ <- p.mkdirs
-           _ <- p.mkdirWithRetry(_ => "test".some) //n.value.some)
-           v = p.dirname /- "test" //n.value
-           _ = println(s"halp: $p\nhalp : $v")
+           _ <- p.mkdirWithRetry(_ => n.toString.some)
+           v = p.dirname /- n.toString
            r <- v.exists
          } yield r ==== true)
        }
