@@ -28,7 +28,7 @@ case class HdfsTemporary(base: HdfsPath, seed: String) {
 
   def directory: Hdfs[HdfsDirectory] = {
     val path = setup
-    path.mkdirs >>= (d =>
+    path.mkdirsOrFail >>= (d =>
       run(s"HdfsDirectory($path.path)") >>
         Hdfs.ok(d))
   }
