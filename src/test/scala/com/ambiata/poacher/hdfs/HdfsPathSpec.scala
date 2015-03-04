@@ -289,15 +289,21 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
          } yield r ==== true)
        }
 
-nhibberd TODO
       ${ prop((n: N, h: HdfsTemporary) => for {
            p <- h.path
+           d <- p.mkdirWithRetry(_ => n.value.some)
+         } yield d.map(_.toHdfsPath) ==== p.some)
+       }
+
+foo      ${ prop((n: N, h: HdfsTemporary) => for {
+           p <- h.path
+           _ = println(s"path: $p")
            _ <- p.mkdirWithRetry(_ => n.value.some)
            r <- p.exists
          } yield r ==== true)
        }
 
-foo      ${ prop((n: Int, h: HdfsTemporary) => for {
+      ${ prop((n: Int, h: HdfsTemporary) => for {
            p <- h.path
            _ <- p.mkdirs
            _ <- p.mkdirWithRetry(_ => n.toString.some)

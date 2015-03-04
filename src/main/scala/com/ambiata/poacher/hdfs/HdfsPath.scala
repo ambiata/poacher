@@ -212,14 +212,19 @@ case class HdfsPath(path: Path) {
     } yield r
 
   }
-
+// todo strings are terrible... Component
   def mvxx(source: HdfsPath, parent: HdfsPath, name: String, nextName: String => Option[String], count: Int): Hdfs[Option[HdfsDirectory]] = {
     if (count > 100) Hdfs.fail("bad")
     val destination = parent /- name
     val zzz = source /- name
+    println(s"destination: $destination\nparent: $parent\nsource: $zzz")
     for {
       e <- zzz.mkdirs
+      k <- parent.exists
       s <- zzz.rename(parent)
+      q <- destination.exists
+      _ = println(s"sigh: $s, $k, $q")
+      _ = println(s"sigh: ${zzz.toHPath.getName}")
       r <- if (e.isEmpty || s == false) nextName(name).map(s => mvxx(source, parent, s, nextName, count + 1)).sequence.map(_.flatten)
            else HdfsDirectory.unsafe(destination.path.path).some.pure[Hdfs]
     } yield r
