@@ -32,7 +32,7 @@ object Committer {
       _ <- Hdfs.unless(t.isEmpty)(Hdfs.fail(s"Attempting to commit to a path that already contains data: '${n}'"))
       c <- p.isDirectory
       _ <- if (!c) Hdfs.fail(s"Can not commit '${p}' as its not a dir") else Hdfs.ok(())
-      d <- n.mkdirs
+      d <- n.mkdirsOrFail
       s <- p.globPaths("*")
       _ <- s.traverse(subpath => subpath.move(d.toHdfsPath))
     } yield ())
