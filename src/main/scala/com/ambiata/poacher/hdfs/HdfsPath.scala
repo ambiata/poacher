@@ -179,6 +179,9 @@ case class HdfsPath(path: Path) {
         else throw ioe
     })
 
+  def resolvePath: Hdfs[HdfsPath] =
+    withFileSystem(fs => HdfsPath.fromPath(fs.resolvePath(toHPath)))
+
   def mkdirs: Hdfs[Option[HdfsDirectory]] =
     withFileSystem(fs => if (fs.mkdirs(toHPath)) HdfsDirectory.unsafe(path.path).some else none)
 
@@ -202,7 +205,7 @@ case class HdfsPath(path: Path) {
       t   = HdfsPath.fromString("/tmp") /- java.util.UUID.randomUUID.toString
       _  <- t.mkdirs
       p  <- path.parent match {
-        case None =>
+        case None =>// todo add a resolvePath here and this becomes invariant
           Hdfs.fail("how does this actually fail yo. Relative or root is how yo")
         case Some(p) =>
           HdfsPath(p).mkdirs.as(HdfsPath(p))
