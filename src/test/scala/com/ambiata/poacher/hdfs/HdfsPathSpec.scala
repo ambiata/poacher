@@ -107,7 +107,7 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
 
     ${ prop((h: HdfsTemporary) => for {
          p <- h.path
-         f <- p.mkdirs
+         f <- p.mkdirsOrFail
          r <- p.determineDirectory
        } yield r ==== f)
      }
