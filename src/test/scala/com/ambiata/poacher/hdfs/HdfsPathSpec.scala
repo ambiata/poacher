@@ -324,10 +324,10 @@ foo      ${ prop((c: Component, h: HdfsTemporary) => for {
          } yield r ==== true)
        }
 
-      ${ prop((n: Int, h: HdfsTemporary) => for {
+foo      ${ prop((c: Component, n: Int, h: HdfsTemporary) => for {
            p <- h.path
-           _ <- p.mkdirs
-           _ <- p.mkdirsWithRetry("", _ => n.toString.some)
+           _ <- (p | c).mkdirs
+           _ <- p.mkdirsWithRetry(c.name, _ => n.toString.some)
            v = p.dirname /- n.toString
            r <- v.exists
          } yield r ==== true)
