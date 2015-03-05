@@ -282,6 +282,8 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
 
   HdfsPath should be able to create directories
 
+    Create a directory successfully
+
       ${ prop((h: HdfsTemporary) => for {
            p <- h.path
            _ <- p.mkdirs
@@ -289,16 +291,36 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
          } yield r ==== true)
        }
 
+    What happens when a directory already exists
+
+      ${ prop((h: HdfsTemporary) => for {
+           p <- h.path
+           _ <- p.mkdirs
+           e <- p.mkdirs
+         } yield !e.isEmpty ==== true)
+       }
+
+    Handle failure
+
+      ${ prop((h: HdfsTemporary) => for {
+           p <- h.path
+           _ <- p.write("")
+           e <- p.mkdirs
+         } yield e.isEmpty ==== true)
+       }
+
+    Create a directory with retry
+
       ${ prop((n: N, h: HdfsTemporary) => for {
            p <- h.path
-           d <- p.mkdirWithRetry(_ => n.value.some)
+           d <- p.mkdirsWithRetry("", _ => n.value.some)
          } yield d.map(_.toHdfsPath) ==== p.some)
        }
 
 foo      ${ prop((n: N, h: HdfsTemporary) => for {
            p <- h.path
            _ = println(s"path: $p")
-           _ <- p.mkdirWithRetry(_ => n.value.some)
+           _ <- p.mkdirsWithRetry("", _ => { ???; println("\n\n\nWHY\n\n"); n.value.some})
            r <- p.exists
          } yield r ==== true)
        }
@@ -306,7 +328,7 @@ foo      ${ prop((n: N, h: HdfsTemporary) => for {
       ${ prop((n: Int, h: HdfsTemporary) => for {
            p <- h.path
            _ <- p.mkdirs
-           _ <- p.mkdirWithRetry(_ => n.toString.some)
+           _ <- p.mkdirsWithRetry("", _ => n.toString.some)
            v = p.dirname /- n.toString
            r <- v.exists
          } yield r ==== true)
@@ -320,7 +342,7 @@ foo      ${ prop((n: N, h: HdfsTemporary) => for {
              _ <- (p.dirname /- i.toString).mkdirs
              _ = { i += 1 }
              _ <- (p.dirname /- i.toString).mkdirs
-             _ <- p.mkdirWithRetry(_ => { i += 1; i.toString.some })
+             _ <- p.mkdirsWithRetry("", _ => { i += 1; i.toString.some })
              r <- (p.dirname /- i.toString).exists
            } yield r -> i ==== true -> 2 })
        }

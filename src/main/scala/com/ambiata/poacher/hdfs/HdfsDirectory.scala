@@ -15,6 +15,9 @@ import scalaz._, Scalaz._, effect.Effect._
  * 'HdfsDirectory' represents a directory that exists on a hdfs file system
  */
 class HdfsDirectory private (val path: Path) extends AnyVal {
+  override def toString: String =
+    s"HdfsDirectory($path)"
+
   def toHdfsPath: HdfsPath =
     HdfsPath(path)
 
