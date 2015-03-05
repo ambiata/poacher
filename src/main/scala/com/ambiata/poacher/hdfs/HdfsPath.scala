@@ -201,6 +201,9 @@ case class HdfsPath(path: Path) {
     *    1. Create a new dir under the tmp dir with the name of the destination dir
     *    2. Try moving the new dir to the parent destination dir (using FileSystem.rename)
     *    3. If the move fails, get the next name and try again
+    *
+    *
+    * Treats the internal 'path' as the base directory.
     */
   def mkdirsWithRetry(first: String, nextName: String => Option[String]): Hdfs[Option[HdfsDirectory]] = {
     for {
@@ -208,10 +211,8 @@ case class HdfsPath(path: Path) {
       fs <- Hdfs.filesystem
       t   = HdfsPath.fromString("/tmp") /- java.util.UUID.randomUUID.toString
       q  <- t.mkdirs
-//      _ = println(s"TEST: $q")
       // todo should we resolve here before we mkdirs?
       z  <- mkdirs
-//      _ = println(s"TEST: $z")
       r  <- xx(t, this, first, nextName, 0)
       _  <- t.delete
     } yield r
@@ -225,31 +226,8 @@ case class HdfsPath(path: Path) {
       m <- source.rename(target)
       z <- (target /- name).exists
       // add destination exists check
-//      _ = println(s"tmp : $tmp\ntarget: $target\nname: $name\n\nresult: $m, $count, $z, $e\n")
       r <- if (e.isEmpty || m == false) nextName(name).map(s => xx(tmp, target, s, nextName, count + 1)).sequence.map(_.flatten)
            else HdfsDirectory.fromHdfsPath(target /- name).some.pure[Hdfs]
-    } yield r
-  }
-
-// todo strings are terrible... Component
-  def mvxx(source: HdfsPath, parent: HdfsPath, name: String, nextName: String => Option[String], count: Int): Hdfs[Option[HdfsDirectory]] = {
-    if (count > 100) Hdfs.fail("bad") //todo else
-    val destination = parent /- name
-    val zzz = source /- name
-    println(s"destination: $destination\nparent: $parent\nsource: $zzz")
-    for {
-      e <- zzz.mkdirs
-      ee <- zzz.exists
-      k <- parent.exists
-      s <- zzz.rename(parent)
-      q <- destination.exists
-//      m <- parent.dirname.listPaths
-      n <- parent.numberOfFiles
-      _ = println(s"sigh: $n")
-      _ = println(s"sigh: $s, $k, $q, $e, $ee")
-      _ = println(s"sigh: ${zzz.toHPath.getName}")
-      r <- if (e.isEmpty || s == false) nextName(name).map(s => mvxx(source, parent, s, nextName, count + 1)).sequence.map(_.flatten)
-           else HdfsDirectory.unsafe(destination.path.path).some.pure[Hdfs]
     } yield r
   }
 

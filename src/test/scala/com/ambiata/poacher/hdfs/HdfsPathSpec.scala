@@ -324,7 +324,7 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
          } yield r ==== true)
        }
 
-foo      ${ prop((c: Component, n: Int, h: HdfsTemporary) => (n > 0) ==> (for {
+     ${ prop((c: Component, n: Int, h: HdfsTemporary) => (n > 0) ==> (for {
            p <- h.path
            _ <- (p | c).mkdirs
            d <- p.mkdirsWithRetry(c.name, _ => n.toString.some)
@@ -333,19 +333,18 @@ foo      ${ prop((c: Component, n: Int, h: HdfsTemporary) => (n > 0) ==> (for {
          } yield d.map(_.toHdfsPath) -> r ==== v.some -> true))
        }
 
-      ${ prop((h: HdfsTemporary) => {
+     ${ prop((h: HdfsTemporary) => {
            var i = 0
            for {
              p <- h.path
-             _ <- p.mkdirs
-             _ <- (p.dirname /- i.toString).mkdirs
+             _ <- (p /- i.toString).mkdirs
              _ = { i += 1 }
-             _ <- (p.dirname /- i.toString).mkdirs
-             _ <- p.mkdirsWithRetry("", _ => { i += 1; i.toString.some })
-             r <- (p.dirname /- i.toString).exists
+             _ = println(s"first: $i")
+             _ <- (p /- i.toString).mkdirs
+             _ <- p.mkdirsWithRetry(0.toString, _ => { i += 1; println(s"loop: $i"); i.toString.some })
+             r <- (p /- i.toString).exists
            } yield r -> i ==== true -> 2 })
        }
-
 
 
   HdfsPath should be able to read and write to a file. These operations should be symmetrical
