@@ -212,6 +212,7 @@ case class HdfsPath(path: Path) {
       // todo should we resolve here before we mkdirs?
       z  <- mkdirs
 //      _ = println(s"TEST: $z")
+      _ = println(s"TEST: $this")
       r  <- xx(t, this, first, nextName, 0)
       _  <- t.delete
     } yield r
@@ -223,9 +224,10 @@ case class HdfsPath(path: Path) {
       _ <- Hdfs.when(count > 100)(Hdfs.fail(""))
       e <- source.mkdirs
       m <- source.rename(target)
+      z <- (target /- name).exists
       // add destination exists check
-//      _ = println(s"tmp : $tmp\ntarget: $target,name: $name")
-      r <- if (e.isEmpty || m == false) nextName(name).map(s => mvxx(tmp, target, s, nextName, count + 1)).sequence.map(_.flatten)
+//      _ = println(s"tmp : $tmp\ntarget: $target\nname: $name\n\nresult: $m, $count, $z, $e\n")
+      r <- if (e.isEmpty || m == false) nextName(name).map(s => xx(tmp, target, s, nextName, count + 1)).sequence.map(_.flatten)
            else HdfsDirectory.fromHdfsPath(target /- name).some.pure[Hdfs]
     } yield r
   }
