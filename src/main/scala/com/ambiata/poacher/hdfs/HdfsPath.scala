@@ -212,7 +212,6 @@ case class HdfsPath(path: Path) {
       // todo should we resolve here before we mkdirs?
       z  <- mkdirs
 //      _ = println(s"TEST: $z")
-      _ = println(s"TEST: $this")
       r  <- xx(t, this, first, nextName, 0)
       _  <- t.delete
     } yield r
