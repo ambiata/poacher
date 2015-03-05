@@ -311,16 +311,15 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
 
     Create a directory with retry
 
-      ${ prop((n: N, h: HdfsTemporary) => for {
+foo      ${ prop((c: Component, h: HdfsTemporary) => for {
            p <- h.path
-           d <- p.mkdirsWithRetry("", _ => n.value.some)
-         } yield d.map(_.toHdfsPath) ==== p.some)
+           d <- p.mkdirsWithRetry(c.name, _ => sys.error("invariant"))
+         } yield d.map(_.toHdfsPath) ==== (p | c).some)
        }
 
-foo      ${ prop((n: N, h: HdfsTemporary) => for {
+foo      ${ prop((c: Component, h: HdfsTemporary) => for {
            p <- h.path
-           _ = println(s"path: $p")
-           _ <- p.mkdirsWithRetry("", _ => { ???; println("\n\n\nWHY\n\n"); n.value.some})
+           _ <- p.mkdirsWithRetry(c.name, _ => sys.error("invariant"))
            r <- p.exists
          } yield r ==== true)
        }

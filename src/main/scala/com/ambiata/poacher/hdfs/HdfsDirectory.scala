@@ -200,6 +200,9 @@ object HdfsDirectory {
   private[hdfs] def unsafe(s: String): HdfsDirectory =
     new HdfsDirectory(Path(s))
 
+  private[hdfs] def fromHdfsPath(p: HdfsPath): HdfsDirectory =
+    new HdfsDirectory(p.path)
+
   implicit def HdfsDirectoryOrder: Order[HdfsDirectory] =
     Order.order((x, y) => x.path.?|?(y.path))
 

@@ -172,12 +172,9 @@ case class HdfsPath(path: Path) {
 
   def rename(target: HdfsPath): Hdfs[Boolean] =
     withFileSystem(fs => try {
-      println(s"foo: ${fs.exists(target.toHPath)}, ${fs.exists(toHPath)}, ${fs.isDirectory(target.toHPath)}")
-//      println("afsasf: " + new HPath(target.toHPath, toHPath.getName))
-//      val x = fs.rename(toHPath, new HPath(target.toHPath, toHPath.getName))
       val x = fs.rename(toHPath, target.toHPath)
       val foo = new HPath(target.toHPath, toHPath.getName)
-      println(s"rename($toHPath, ${target.toHPath}\nresult: $x\nfoo: ${fs.exists(foo)}")
+//      println(s"rename($toHPath, ${target.toHPath}\nresult: $x\nfoo: ${fs.exists(foo)}")
       x
     } catch {
       case ioe: IOException =>
@@ -207,22 +204,32 @@ case class HdfsPath(path: Path) {
     */
   def mkdirsWithRetry(first: String, nextName: String => Option[String]): Hdfs[Option[HdfsDirectory]] = {
     for {
+      _ <- Hdfs.when(first == "")(Hdfs.fail("go away idiot"))
       fs <- Hdfs.filesystem
       t   = HdfsPath.fromString("/tmp") /- java.util.UUID.randomUUID.toString
-      _  <- t.mkdirs
-//      _  <-
-
-      ps <- path.parent match {
-        case None =>// todo add a resolvePath here and this becomes invariant
-          Hdfs.fail("how does this actually fail yo. Relative or root is how yo")
-        case Some(p) =>
-          HdfsPath(p).mkdirs.as(HdfsPath(p))
-      }
-      r  <- mvxx(t, ps, toHPath.getName, nextName, 0)
+      q  <- t.mkdirs
+//      _ = println(s"TEST: $q")
+      // todo should we resolve here before we mkdirs?
+      z  <- mkdirs
+//      _ = println(s"TEST: $z")
+      r  <- xx(t, this, first, nextName, 0)
       _  <- t.delete
     } yield r
-
   }
+
+  def xx(tmp: HdfsPath, target: HdfsPath, name: String, nextName: String => Option[String], count: Int): Hdfs[Option[HdfsDirectory]] = {
+    val source = tmp /- name
+    for {
+      _ <- Hdfs.when(count > 100)(Hdfs.fail(""))
+      e <- source.mkdirs
+      m <- source.rename(target)
+      // add destination exists check
+//      _ = println(s"tmp : $tmp\ntarget: $target,name: $name")
+      r <- if (e.isEmpty || m == false) nextName(name).map(s => mvxx(tmp, target, s, nextName, count + 1)).sequence.map(_.flatten)
+           else HdfsDirectory.fromHdfsPath(target /- name).some.pure[Hdfs]
+    } yield r
+  }
+
 // todo strings are terrible... Component
   def mvxx(source: HdfsPath, parent: HdfsPath, name: String, nextName: String => Option[String], count: Int): Hdfs[Option[HdfsDirectory]] = {
     if (count > 100) Hdfs.fail("bad") //todo else
