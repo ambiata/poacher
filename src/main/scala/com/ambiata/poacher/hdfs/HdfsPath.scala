@@ -192,7 +192,7 @@ case class HdfsPath(path: Path) {
     withFileSystem(fs => if (fs.mkdirs(toHPath)) HdfsDirectory.unsafe(path.path).some else none)
 
   def mkdirsOrFail: Hdfs[HdfsDirectory] =
-    mkdirs.flatMap(o => Hdfs.fromOption(o, "A file already existed at the specified path, $path"))
+    mkdirs.flatMap(o => Hdfs.fromOption(o, s"A file already existed at the specified path, $path"))
 
   /**
     *  Create a new dir, and if it fails, retry with a new name. This should be atomic
