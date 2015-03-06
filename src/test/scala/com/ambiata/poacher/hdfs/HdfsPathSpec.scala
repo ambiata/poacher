@@ -761,23 +761,55 @@ nhibberd
 
     List a single file
 
-      ...
+      ${ prop((v: DistinctPair[Component], h: HdfsTemporary) => for {
+           p <- h.path
+           f <- (p | v.first).write("")
+           _ <- (p | v.second).mkdirs
+           r <- p.listFiles
+         } yield r ==== List(f))
+       }
 
     'listFiles' is consistent with 'determineFile'
 
-      ...
+      ${ prop((h: HdfsTemporary) => for {
+           p <- h.path
+           f <- p.write("")
+           r <- p.listFiles
+           z <- r.traverse(_.toHdfsPath.determineFile)
+         } yield z ==== List(f))
+       }
 
     List multiple files
 
-      ...
+      ${ prop((l: HdfsTemporary, a: Component, b: Component, c: Component) =>
+           (a.name != b.name && a.name != c.name) ==> (for {
+             p <- l.path
+             q <- (p | a).write("")
+             z <- (p | b).write("")
+             _ <- (p | c).mkdirs
+             r <- p.listFiles
+           } yield r.sorted ==== List(q, z).sorted))
+       }
 
     List a directory
 
-      ...
+      ${ prop((v: DistinctPair[Component], l: HdfsTemporary) => for {
+           p <- l.path
+           _ <- (p | v.first).mkdirs
+           _ <- (p | v.second).write("")
+           r <- p.listDirectories.map(_.map(_.path.basename))
+         } yield r ==== List(v.first.some))
+       }
 
     List multiple paths
 
-      ...
+foo     ${ prop((v: DistinctPair[Component], l: HdfsTemporary) => for {
+          p <- l.path
+          f <- (p | v.first | v.second).write("")
+          d <- (p | v.second).mkdirsOrFail
+          r <- p.listPaths
+        } yield r.sorted ==== List(f.toHdfsPath, d.toHdfsPath).sorted)
+      }
 
 
   HdfsPath should be able to list files/directories/paths recursively
