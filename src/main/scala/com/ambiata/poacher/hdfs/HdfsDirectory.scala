@@ -95,7 +95,7 @@ class HdfsDirectory private (val path: Path) extends AnyVal {
     }
 
   def size: Hdfs[Option[BytesQuantity]] = for {
-    l <- globFilesRecursively("*")
+    l <- listFilesRecursively
     s <- l.traverse(_.sizeOrFail)
   } yield (!s.isEmpty).option(s.sum)
 
@@ -104,7 +104,7 @@ class HdfsDirectory private (val path: Path) extends AnyVal {
 
   /** @return the number of files in a directory, including the files in subdirectories but not the subdirectories */
   def numberOfFiles: Hdfs[Option[Int]] =
-    globFilesRecursively("*").map(x => (!x.isEmpty).option(x.size))
+    listFilesRecursively.map(x => (!x.isEmpty).option(x.size))
 
   def listFiles: Hdfs[List[HdfsFile]] =
     globFiles("*")
@@ -151,29 +151,33 @@ class HdfsDirectory private (val path: Path) extends AnyVal {
         "Invariant failure, this is likely a bug: https://github.com/ambiata/poacher/issues").map(f -> _)))
 
   def listFilesRecursively: Hdfs[List[HdfsFile]] =
-    globFilesRecursively("*")
+    withFileSystem(fs => {
+      def loop(p: HdfsPath): List[HdfsFile] = {
+        fs.globStatus(new HPath(p.toHPath, "*")).toList.flatMap(f => {
+          val pp = p | Component.unsafe(f.getPath.getName)
+          if (f.isFile) List(HdfsFile.unsafe(pp.path.path))
+          else          loop(pp)
+        })
+      }
+      loop(toHdfsPath)
+    })
 
   def listDirectoriesRecursively: Hdfs[List[HdfsDirectory]] =
-    globDirectoriesRecursively("*")
+    withFileSystem(fs => {
+      def loop(p: HdfsPath): List[HdfsDirectory] = {
+        fs.globStatus(new HPath(p.toHPath, "*")).toList.flatMap(f => {
+          val pp = p | Component.unsafe(f.getPath.getName)
+          if (f.isDirectory) List(HdfsDirectory.unsafe(pp.path.path)) ++ loop(pp)
+          else               List()
+        })
+      }
+      loop(toHdfsPath)
+    })
 
   def listPathsRecursively: Hdfs[List[HdfsPath]] =
-    globPathsRecursively("*")
-
-  def globFilesRecursively(glob: String): Hdfs[List[HdfsFile]] = for {
-    g <- globPathsRecursively(glob)
-    r <- g.traverse(_.determine)
-  } yield r.map(_.map(_.swap.toOption)).flatten.flatten
-
-  def globDirectoriesRecursively(glob: String): Hdfs[List[HdfsDirectory]] = for {
-    g <- globPathsRecursively(glob)
-    r <- g.traverse(_.determine)
-  } yield r.map(_.map(_.toOption)).flatten.flatten
-
-  def globPathsRecursively(glob: String): Hdfs[List[HdfsPath]] =
     withFileSystem(fs => {
       def loop(p: HdfsPath): List[HdfsPath] = {
-        val l: List[org.apache.hadoop.fs.FileStatus] = Option(fs.globStatus(new HPath(p.toHPath, glob))).cata(_.toList, List())
-        l.flatMap(f => {
+        fs.globStatus(new HPath(p.toHPath, "*")).toList.flatMap(f => {
           val pp = p | Component.unsafe(f.getPath.getName)
           if (f.isDirectory) List(pp) ++ loop(pp)
           else               List(pp)

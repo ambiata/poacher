@@ -357,15 +357,6 @@ case class HdfsPath(path: Path) {
   def globPaths(glob: String): Hdfs[List[HdfsPath]] =
     determinef(_ => List(this).pure[Hdfs], _.globPaths(glob))
 
-  def globFilesRecursively(glob: String): Hdfs[List[HdfsFile]] =
-    determinef(f => List(f).pure[Hdfs], _.globFilesRecursively(glob))
-
-  def globDirectoriesRecursively(glob: String): Hdfs[List[HdfsDirectory]] =
-    determinef(_ => nil.pure[Hdfs], _.globDirectoriesRecursively(glob))
-
-  def globPathsRecursively(glob: String): Hdfs[List[HdfsPath]] =
-    determinef(_ => List(this).pure[Hdfs], _.globPathsRecursively(glob))
-
   def listFiles: Hdfs[List[HdfsFile]] =
     globFiles("*")
 
@@ -382,16 +373,13 @@ case class HdfsPath(path: Path) {
     determinef(_ => nil.pure[Hdfs], _.listFilesRelativeTo)
 
   def listFilesRecursively: Hdfs[List[HdfsFile]] =
-    globFilesRecursively("*")
+    determinef(f => List(f).pure[Hdfs], _.listFilesRecursively)
 
   def listDirectoriesRecursively: Hdfs[List[HdfsDirectory]] =
-    globDirectoriesRecursively("*")
+    determinef(f => nil.pure[Hdfs], _.listDirectoriesRecursively)
 
   def listPathsRecursively: Hdfs[List[HdfsPath]] =
-    globPathsRecursively("*")
-
-
-
+    determinef(f => List(this).pure[Hdfs], _.listPathsRecursively)
 }
 
 object HdfsPath {

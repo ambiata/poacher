@@ -462,6 +462,14 @@ nhibberd
 
       ${ prop((l: HdfsTemporary) => l.path.flatMap(_.readOrFail) must beFail) }
 
+      ${ prop((h: HdfsTemporary) => (for {
+           p <- h.path
+           _ <- p.mkdirs
+           r <- p.write("")
+         } yield r) must beFail)
+       }
+
+
     Write stream
 
       ${ prop((s: S, l: HdfsTemporary) => for {
@@ -814,9 +822,9 @@ nhibberd
 
   HdfsPath should be able to list files/directories/paths recursively
 
-    List files
+    List files recursively
 
-      ${ prop((d: DistinctPair[Component], l: HdfsTemporary) => for {
+foo      ${ prop((d: DistinctPair[Component], l: HdfsTemporary) => for {
            p <- l.path
            v =  d.first
            _ <- List(p | v | v | v | v, p | v | d.second, p | v | v | d.second).traverse(_.touch)
@@ -825,9 +833,9 @@ nhibberd
             (Relative | v | v | d.second).some).sorted)
        }
 
-    List directories
+    List directories recursively
 
-      ${ prop((d: DistinctPair[Component], h: HdfsTemporary) => for {
+foo      ${ prop((d: DistinctPair[Component], h: HdfsTemporary) => for {
            p <- h.path
            x = d.first
            a = p | x | x | x
@@ -838,9 +846,9 @@ nhibberd
          } yield r.sorted ==== List(a, b, c).sorted)
        }
 
-    List paths
+    List paths recursively
 
-      ${ prop((v: DistinctPair[Component], local: HdfsTemporary) => for {
+foo      ${ prop((v: DistinctPair[Component], local: HdfsTemporary) => for {
            p <- local.path
            _ <- (p | v.first | v.second).touch
            _ <- (p | v.first | v.first | v.second).touch
@@ -920,32 +928,6 @@ nhibberd
            r <- p.globPaths(i.value)
          } yield r ==== List(a.toHdfsPath)))
        }
-
-  HdfsPath should be able to glob files/directories/paths recursively
-
-    Glob files
-
-foo      ${ prop((c: Component, i: Ident, b: Ident, l: HdfsTemporary) => (!b.value.contains(i.value)) ==> (for {
-           p <- l.path
-           a <- ((p | c) /- i.value).write("")
-           z <- ((p | c | c) /- i.value).write("")
-           _ <- ((p | c | c | c) /- i.value).mkdirs
-           f <- ((p | c) /- s"a${i.value}b").write("")
-           _ <- ((p | c) /- b.value).write("")
-           _ <- (p /- i.value).write("")
-           r <- p.globFiles(s"*${i.value}*")
-         } yield r.sorted ==== List(a, z, f).sorted))
-       }
-
-    Glob directories
-
-      ...
-
-    Glob paths
-
-      ...
-
-- [ ] glob
 
 """
   val beFile = beSome(be_-\/[HdfsFile])
