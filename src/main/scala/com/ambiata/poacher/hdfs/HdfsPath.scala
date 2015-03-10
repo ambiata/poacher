@@ -172,10 +172,7 @@ case class HdfsPath(path: Path) {
 
   def rename(target: HdfsPath): Hdfs[Boolean] =
     withFileSystem(fs => try {
-      val x = fs.rename(toHPath, target.toHPath)
-      val foo = new HPath(target.toHPath, toHPath.getName)
-//      println(s"rename($toHPath, ${target.toHPath}\nresult: $x\nfoo: ${fs.exists(foo)}")
-      x
+      fs.rename(toHPath, target.toHPath)
     } catch {
       case ioe: IOException =>
         if(ioe.getMessage.startsWith("Target") && ioe.getMessage.endsWith("is a directory")) false

@@ -63,6 +63,9 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
 
       ${ HdfsPath.fromURI(new URI("s3:///hello/world")) must beNone }
 
+    a List
+
+      ${ prop((h: HdfsTemporary) => h.path.map(p => HdfsPath.fromList(Root, p.path.names) ==== p)) }
 
   A list of HdfsPath can be ordered
 
