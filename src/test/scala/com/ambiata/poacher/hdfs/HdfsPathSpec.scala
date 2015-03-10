@@ -824,7 +824,7 @@ nhibberd
 
     List files recursively
 
-foo      ${ prop((d: DistinctPair[Component], l: HdfsTemporary) => for {
+      ${ prop((d: DistinctPair[Component], l: HdfsTemporary) => for {
            p <- l.path
            v =  d.first
            _ <- List(p | v | v | v | v, p | v | d.second, p | v | v | d.second).traverse(_.touch)
@@ -835,7 +835,7 @@ foo      ${ prop((d: DistinctPair[Component], l: HdfsTemporary) => for {
 
     List directories recursively
 
-foo      ${ prop((d: DistinctPair[Component], h: HdfsTemporary) => for {
+      ${ prop((d: DistinctPair[Component], h: HdfsTemporary) => for {
            p <- h.path
            x = d.first
            a = p | x | x | x
@@ -848,7 +848,7 @@ foo      ${ prop((d: DistinctPair[Component], h: HdfsTemporary) => for {
 
     List paths recursively
 
-foo      ${ prop((v: DistinctPair[Component], local: HdfsTemporary) => for {
+      ${ prop((v: DistinctPair[Component], local: HdfsTemporary) => for {
            p <- local.path
            _ <- (p | v.first | v.second).touch
            _ <- (p | v.first | v.first | v.second).touch
