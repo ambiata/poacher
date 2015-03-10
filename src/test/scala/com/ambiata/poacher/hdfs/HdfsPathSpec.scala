@@ -456,8 +456,12 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
        }
 
     Handle failure cases
-nhibberd
-      { prop((l: HdfsTemporary) => l.path.flatMap(_.read) must beOkLike(_ must beNone)) }
+
+      ${ prop((l: HdfsTemporary) => for {
+           p <- l.path
+           r <- p.read
+         } yield r must beNone)
+      }
 
       ${ prop((l: HdfsTemporary) => l.path.flatMap(_.readOrFail) must beFail) }
 
@@ -467,7 +471,6 @@ nhibberd
            r <- p.write("")
          } yield r) must beFail)
        }
-
 
     Write stream
 
