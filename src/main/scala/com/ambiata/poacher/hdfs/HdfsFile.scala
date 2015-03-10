@@ -15,6 +15,9 @@ import scalaz._, Scalaz._, effect.Effect._
 import MemoryConversions._
 
 class HdfsFile private (val path: Path) extends AnyVal {
+  override def toString: String =
+    s"HdfsFile($path)"
+
   def toHdfsPath: HdfsPath =
     HdfsPath(path)
 

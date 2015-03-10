@@ -803,38 +803,139 @@ nhibberd
 
     List multiple paths
 
-foo     ${ prop((v: DistinctPair[Component], l: HdfsTemporary) => for {
-          p <- l.path
-          f <- (p | v.first | v.second).write("")
-          d <- (p | v.second).mkdirsOrFail
-          r <- p.listPaths
-        } yield r.sorted ==== List(f.toHdfsPath, d.toHdfsPath).sorted)
-      }
+      ${ prop((v: DistinctPair[Component], l: HdfsTemporary) => for {
+           p <- l.path
+           f <- (p | v.first | v.second).write("")
+           d <- (p | v.second).mkdirsOrFail
+           r <- p.listPaths
+         } yield r.sorted ==== List(f.toHdfsPath.dirname, d.toHdfsPath).sorted)
+       }
 
 
   HdfsPath should be able to list files/directories/paths recursively
 
     List files
 
-      ...
+      ${ prop((d: DistinctPair[Component], l: HdfsTemporary) => for {
+           p <- l.path
+           v =  d.first
+           _ <- List(p | v | v | v | v, p | v | d.second, p | v | v | d.second).traverse(_.touch)
+           r <- p.listFilesRecursively.map(_.map(_.path.rebaseTo(p.path)))
+         } yield r.sorted ==== List((Relative | v | v | v | v).some, (Relative | v | d.second).some,
+            (Relative | v | v | d.second).some).sorted)
+       }
 
     List directories
 
-      ...
+      ${ prop((d: DistinctPair[Component], h: HdfsTemporary) => for {
+           p <- h.path
+           x = d.first
+           a = p | x | x | x
+           b = p | x | x
+           c = p | x
+           _ <- List(a | x, b | d.second, c | d.second).traverse(_.touch)
+           r <- p.listDirectoriesRecursively.map(_.map(_.toHdfsPath))
+         } yield r.sorted ==== List(a, b, c).sorted)
+       }
 
     List paths
 
-      ...
+      ${ prop((v: DistinctPair[Component], local: HdfsTemporary) => for {
+           p <- local.path
+           _ <- (p | v.first | v.second).touch
+           _ <- (p | v.first | v.first | v.second).touch
+           _ <- (p | v.second).touch
+           r <- p.listPathsRecursively.map(_.map(_.path.rebaseTo(p.path)))
+         } yield r.sorted ==== List(Path(v.first.name), Path(v.second.name), Path(v.first.name) | v.second,
+            Path(v.first.name) | v.first, Path(v.first.name) | v.first | v.second).map(_.some).sorted)
+       }
+
 
   HdfsPath should be able to glob files/directories/paths at a single level
 
-    ...
+    Glob files
+
+      ${ prop((i: Ident, b: Ident, l: HdfsTemporary) => (!b.value.contains(i.value)) ==> (for {
+           p <- l.path
+           a <- (p /- i.value).write("")
+           f <- (p /- s"a${i.value}b").write("")
+           _ <- (p /- b.value).write("")
+           _ <- (p /- s"${i.value}z").mkdirs
+           r <- p.globFiles(s"*${i.value}*")
+         } yield r.sorted ==== List(a, f).sorted))
+       }
+
+      ${ prop((i: Ident, b: Ident, l: HdfsTemporary) => (!b.value.contains(i.value)) ==> (for {
+           p <- l.path
+           a <- (p /- i.value).write("")
+           _ <- (p /- s"a${i.value}b").write("")
+           _ <- (p /- b.value).write("")
+           _ <- (p /- s"${i.value}z").mkdirs
+           r <- p.globFiles(i.value)
+         } yield r ==== List(a)))
+       }
+
+
+    Glob directories
+
+      ${ prop((i: Ident, b: Ident, l: HdfsTemporary) => (!b.value.contains(i.value)) ==> (for {
+           p <- l.path
+           a <- (p /- i.value).mkdirsOrFail
+           f <- (p /- s"a${i.value}b").mkdirsOrFail
+           _ <- (p /- b.value).mkdirs
+           _ <- (p /- s"${i.value}z").write("")
+           r <- p.globDirectories(s"*${i.value}*")
+         } yield r.sorted ==== List(a, f).sorted))
+       }
+
+      ${ prop((i: Ident, b: Ident, l: HdfsTemporary) => (!b.value.contains(i.value)) ==> (for {
+           p <- l.path
+           a <- (p /- i.value).mkdirsOrFail
+           _ <- (p /- s"a${i.value}b").mkdirs
+           _ <- (p /- b.value).mkdirs
+           _ <- (p /- s"${i.value}z").write("")
+           r <- p.globDirectories(i.value)
+         } yield r ==== List(a)))
+       }
+
+    Glob paths
+
+      ${ prop((i: Ident, z: Ident, l: HdfsTemporary) => (!z.value.contains(i.value)) ==> (for {
+           p <- l.path
+           a <- (p /- i.value).mkdirsOrFail
+           b <- (p /- s"a${i.value}b").mkdirsOrFail
+           _ <- (p /- z.value).mkdirs
+           c <- (p /- s"${i.value}z").write("")
+           r <- p.globPaths(s"*${i.value}*")
+         } yield r.sorted ==== List(a.toHdfsPath, b.toHdfsPath, c.toHdfsPath).sorted))
+       }
+
+      ${ prop((i: Ident, z: Ident, l: HdfsTemporary) => (!z.value.contains(i.value)) ==> (for {
+           p <- l.path
+           a <- (p /- i.value).mkdirsOrFail
+           _ <- (p /- s"a${i.value}b").mkdirs
+           _ <- (p /- s"a${i.value}abc").write("")
+           _ <- (p /- z.value).mkdirs
+           _ <- (p /- s"${i.value}z").write("")
+           r <- p.globPaths(i.value)
+         } yield r ==== List(a.toHdfsPath)))
+       }
 
   HdfsPath should be able to glob files/directories/paths recursively
 
     Glob files
 
-      ...
+foo      ${ prop((c: Component, i: Ident, b: Ident, l: HdfsTemporary) => (!b.value.contains(i.value)) ==> (for {
+           p <- l.path
+           a <- ((p | c) /- i.value).write("")
+           z <- ((p | c | c) /- i.value).write("")
+           _ <- ((p | c | c | c) /- i.value).mkdirs
+           f <- ((p | c) /- s"a${i.value}b").write("")
+           _ <- ((p | c) /- b.value).write("")
+           _ <- (p /- i.value).write("")
+           r <- p.globFiles(s"*${i.value}*")
+         } yield r.sorted ==== List(a, z, f).sorted))
+       }
 
     Glob directories
 
@@ -844,8 +945,6 @@ foo     ${ prop((v: DistinctPair[Component], l: HdfsTemporary) => for {
 
       ...
 
-- [ ] mkdirRetry
-- [ ] list
 - [ ] glob
 
 """
