@@ -339,9 +339,8 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
              p <- h.path
              _ <- (p /- i.toString).mkdirs
              _ = { i += 1 }
-             _ = println(s"first: $i")
              _ <- (p /- i.toString).mkdirs
-             _ <- p.mkdirsWithRetry(0.toString, _ => { i += 1; println(s"loop: $i"); i.toString.some })
+             _ <- p.mkdirsWithRetry(0.toString, _ => { i += 1; i.toString.some })
              r <- (p /- i.toString).exists
            } yield r -> i ==== true -> 2 })
        }
