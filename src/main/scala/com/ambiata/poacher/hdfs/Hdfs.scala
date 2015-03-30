@@ -170,6 +170,9 @@ object Hdfs {
     })
   } yield a
 
+  def readBytes(p: Path): Hdfs[Array[Byte]] =
+    readWith(p, is =>  Streams.readBytes(is))
+
   def readContentAsString(p: Path): Hdfs[String] =
     readWith(p, is =>  Streams.read(is))
 
@@ -194,6 +197,9 @@ object Hdfs {
         f(out)
       }))
   } yield a
+
+  def writeBytes[A](p: Path, bytes: Array[Byte]): Hdfs[Unit] =
+    writeWith(p, o => Streams.writeBytes(o, bytes))
 
   def cp(src: Path, dest: Path, overwrite: Boolean): Hdfs[Unit] = for {
     fs   <- filesystem

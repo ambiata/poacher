@@ -13,6 +13,7 @@ class HdfsSpec extends Specification with ScalaCheck { def is = s2"""
 
  The Hdfs object provide functions to deal with paths
    it is possible to recursively glob paths  $e1
+   read / write bytes                        $readWriteBytes
 
  Hdfs Finalizers
  ===============
@@ -42,6 +43,13 @@ class HdfsSpec extends Specification with ScalaCheck { def is = s2"""
 
    Hdfs.globFilesRecursively(new Path(basedir)).run(new Configuration) must beOkLike(paths => paths must haveSize(4))
  }
+
+  def readWriteBytes = prop((path: HdfsTemporary, bytes: Array[Byte]) => (for {
+    p   <- path.path
+    _   <- Hdfs.writeBytes(p, bytes)
+    bs  <- Hdfs.readBytes(p)
+  } yield bs).run(new Configuration) must beOkValue(bytes))
+    .set(minTestsOk = 10)
 
   def cleanup = {
     var v = 0
