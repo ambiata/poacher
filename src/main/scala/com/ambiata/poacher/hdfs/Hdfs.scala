@@ -182,6 +182,16 @@ object Hdfs {
   def globLines(p: Path, glob: String = "*"): Hdfs[Iterator[String]] =
     Hdfs.globFiles(p, glob).flatMap(_.map(Hdfs.readLines).sequenceU.map(_.toIterator.flatten))
 
+  /**
+   * @return glob string which will glob all the "leaves" files accessible under a given directory
+   */
+  def filesGlob(path: Path): Hdfs[Option[String]] =
+    globFilesRecursively(path).map { files =>
+      files.map(_.depth).maximum.map { max =>
+        Some(List.fill(max - path.depth)("*").mkString("/"))
+      }.getOrElse(None)
+    }
+
   def write(p: Path, content: String): Hdfs[Unit] = for {
     _ <- Hdfs.safe(mkdir(p.getParent)).void
     f <- filesystem
