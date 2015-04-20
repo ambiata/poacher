@@ -1,6 +1,9 @@
 package com.ambiata.poacher.hdfs
 
 import Arbitraries._
+import com.ambiata.disorder.Ident
+import com.ambiata.mundane.io.FilePath
+import org.scalacheck._, Arbitrary._, Gen._
 import org.specs2._
 import org.apache.hadoop.fs.Path
 import java.io.File
@@ -12,8 +15,9 @@ import scalaz._, Scalaz._
 class HdfsSpec extends Specification with ScalaCheck { def is = s2"""
 
  The Hdfs object provide functions to deal with paths
-   it is possible to recursively glob paths  $e1
-   read / write bytes                        $readWriteBytes
+   it is possible to recursively glob files                         $globFiles
+   we can create a glob to get all the leaves files in a directory  $filesGlob
+   read / write bytes                                               $readWriteBytes
 
  Hdfs Finalizers
  ===============
@@ -33,23 +37,31 @@ class HdfsSpec extends Specification with ScalaCheck { def is = s2"""
 
 """
 
- val basedir = "target/test/HdfsSpec/" + java.util.UUID.randomUUID()
+  implicit val parameters = set(minTestsOk = 10)
 
- def e1 = {
-   val dirs = Seq(basedir + "/a/b/c", basedir + "/e/f/g")
-   val files = dirs.flatMap(dir => Seq(dir+"/f1", dir+"/f2"))
-   dirs.foreach(dir => new File(dir).mkdirs)
-   files.foreach(f => new File(f).createNewFile)
+  def globFiles =  prop((dir: HdfsTemporary, files: List[FilePath]) => (for {
+    d <- dir.path
+    _ <- files.traverseU(f => Hdfs.write(new Path(d, f.path), "c"))
+    c <- Hdfs.globFilesRecursively(d)
+  } yield c).run(new Configuration) must beOkLike(_.size ==== files.size))
 
-   Hdfs.globFilesRecursively(new Path(basedir)).run(new Configuration) must beOkLike(paths => paths must haveSize(4))
- }
+  def filesGlob = prop((dir: HdfsTemporary, files: List[FilePath]) => (for {
+    d     <- dir.path
+    paths =  files.map(f => new Path(d, f.path))
+    maxDepth = paths.map(_.depth).maximum.getOrElse(0)
+    leaves = paths.filter(_.depth == maxDepth)
+    _     <- paths.traverseU(p => Hdfs.write(p, "c"))
+    glob  <- Hdfs.filesGlob(d)
+    fs    <- Hdfs.globFilesRecursively(d, glob.getOrElse("*"))
+  } yield (fs, leaves)).run(new Configuration) must beOkLike { case (fs, leaves) =>
+    fs.map(_.getName).toSet ==== leaves.map(_.getName).toSet
+  })
 
   def readWriteBytes = prop((path: HdfsTemporary, bytes: Array[Byte]) => (for {
     p   <- path.path
     _   <- Hdfs.writeBytes(p, bytes)
     bs  <- Hdfs.readBytes(p)
   } yield bs).run(new Configuration) must beOkValue(bytes))
-    .set(minTestsOk = 10)
 
   def cleanup = {
     var v = 0
@@ -74,7 +86,6 @@ class HdfsSpec extends Specification with ScalaCheck { def is = s2"""
     s <- source.path
     c <- moveFile(s, d, contents)
   } yield c).run(new Configuration) must beOkValue(contents))
-  .set(minTestsOk = 10)
 
   def moveFileParentExists = prop((source: HdfsTemporary, dest: HdfsTemporary, contents: String) => (for {
     d <- dest.path
@@ -82,14 +93,12 @@ class HdfsSpec extends Specification with ScalaCheck { def is = s2"""
     _ <- Hdfs.mkdir(d.getParent)
     c <- moveFile(s, d, contents)
   } yield c).run(new Configuration) must beOkValue(contents))
-  .set(minTestsOk = 10)
 
   def moveDirCheck = prop((source: HdfsTemporary, sub: SubPath, dest: HdfsTemporary, contents: String) => (for {
     d <- dest.path
     s <- source.path
     c <- moveDir(s, sub, d, contents)
   } yield c).run(new Configuration) must beOkValue(contents))
-  .set(minTestsOk = 10)
 
   def moveDirParentExists = prop((source: HdfsTemporary, sub: SubPath, dest: HdfsTemporary, contents: String) => (for {
     d <- dest.path
@@ -97,7 +106,6 @@ class HdfsSpec extends Specification with ScalaCheck { def is = s2"""
     _ <- Hdfs.mkdir(d.getParent)
     c <- moveDir(s, sub, d, contents)
   } yield c).run(new Configuration) must beOkValue(contents))
-  .set(minTestsOk = 10)
 
   def moveParentFile = prop((source: HdfsTemporary, dest: HdfsTemporary, contents: String) => (for {
     d <- dest.path
@@ -105,7 +113,6 @@ class HdfsSpec extends Specification with ScalaCheck { def is = s2"""
     _ <- Hdfs.write(d.getParent, contents)
     c <- moveFile(s, d, contents)
   } yield c).run(new Configuration) must beFail)
-  .set(minTestsOk = 10)
 
   def moveFile(source: Path, dest: Path, contents: String): Hdfs[String] = for {
     _ <- Hdfs.write(source, contents)
@@ -119,4 +126,11 @@ class HdfsSpec extends Specification with ScalaCheck { def is = s2"""
     r <- Hdfs.mv(source, dest)
     c <- Hdfs.readContentAsString(new Path(dest, sub.path))
   } yield c
+
+  implicit def FilePathsArbitrary: Arbitrary[FilePath] = Arbitrary {
+    for {
+      n  <- Gen.choose(1, 5)
+      fs <- Gen.listOfN(n, arbitrary[Ident]).map(ls => FilePath.unsafe(ls.map(_.value).mkString("/")))
+    } yield fs
+  }
 }
