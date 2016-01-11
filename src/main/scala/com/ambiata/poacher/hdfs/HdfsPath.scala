@@ -204,27 +204,27 @@ case class HdfsPath(path: Path) {
     */
   def mkdirsWithRetry(first: String, nextName: String => Option[String]): Hdfs[Option[HdfsDirectory]] = {
     for {
-      _ <- Hdfs.when(first == "")(Hdfs.fail("go away idiot"))
+      _  <- Hdfs.when(first == "")(Hdfs.fail("go away idiot"))
       fs <- Hdfs.filesystem
       t   = HdfsPath.fromString("/tmp") /- java.util.UUID.randomUUID.toString
       q  <- t.mkdirs
       // todo should we resolve here before we mkdirs?
       z  <- mkdirs
-      r  <- xx(t, this, first, nextName, 0)
+      r  <- mkdirsWithRetryX(t, first, nextName, 0)
       _  <- t.delete
     } yield r
   }
 
-  def xx(tmp: HdfsPath, target: HdfsPath, name: String, nextName: String => Option[String], count: Int): Hdfs[Option[HdfsDirectory]] = {
+  def mkdirsWithRetryX(tmp: HdfsPath, name: String, nextName: String => Option[String], count: Int): Hdfs[Option[HdfsDirectory]] = {
     val source = tmp /- name
     for {
-      _ <- Hdfs.when(count > 100)(Hdfs.fail(""))
+      _ <- Hdfs.when(count > 100)(Hdfs.fail("Number of mkdirs retries exceeded"))
       e <- source.mkdirs
-      m <- source.rename(target)
-      z <- (target /- name).exists
+      m <- source.rename(this)
+      z <- /-(name).exists
       // add destination exists check
-      r <- if (e.isEmpty || m == false) nextName(name).map(s => xx(tmp, target, s, nextName, count + 1)).sequence.map(_.flatten)
-           else HdfsDirectory.fromHdfsPath(target /- name).some.pure[Hdfs]
+      r <- if (e.isEmpty || m == false) nextName(name).traverse(s => mkdirsWithRetryX(tmp, s, nextName, count + 1)).map(_.flatten)
+           else HdfsDirectory.fromHdfsPath(/-(name)).some.pure[Hdfs]
     } yield r
   }
 

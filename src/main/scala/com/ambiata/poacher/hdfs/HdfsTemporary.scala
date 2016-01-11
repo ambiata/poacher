@@ -56,14 +56,6 @@ case class HdfsTemporary(base: HdfsPath, seed: String) {
 }
 
 object HdfsTemporary {
-  def getTemporaryHdfsX: Hdfs[Path] = {
-    val p = ??? //new Path(uniqueDirPath.path)
-    addHdfsFinalizer(p).as(p)
-  }
-
-  def addHdfsFinalizer(path: HdfsPath): Hdfs[Unit] =
-    Hdfs.addFinalizer(path.delete)
-
   def random: HdfsTemporary =
     HdfsTemporary(hdfsTemporaryPath, java.util.UUID.randomUUID().toString)
 

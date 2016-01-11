@@ -11,9 +11,6 @@ import scalaz._, Scalaz._
 
 class HdfsSpec extends Specification with ScalaCheck { def is = s2"""
 
- The Hdfs object provide functions to deal with paths
-   it is possible to recursively glob paths  e1
-
  Hdfs Finalizers
  ===============
 
@@ -23,17 +20,6 @@ class HdfsSpec extends Specification with ScalaCheck { def is = s2"""
 
 """
 
- val basedir = "target/test/HdfsSpec/" + java.util.UUID.randomUUID()
-/*
- def e1 = {
-   val dirs = Seq(basedir + "/a/b/c", basedir + "/e/f/g")
-   val files = dirs.flatMap(dir => Seq(dir+"/f1", dir+"/f2"))
-   dirs.foreach(dir => new File(dir).mkdirs)
-   files.foreach(f => new File(f).createNewFile)
-
-   Hdfs.globFilesRecursively(new Path(basedir)).run(new Configuration) must beOkLike(paths => paths must haveSize(4))
- }
- */
   def cleanup = {
     var v = 0
     Hdfs.addFinalizer(Hdfs.safe(v = 1)).run(new Configuration).unsafePerformIO

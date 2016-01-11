@@ -1,13 +1,11 @@
 package com.ambiata.poacher.mr
 
-//import org.apache.hadoop.fs.Path
 import org.apache.hadoop.mapreduce.Job
 import org.apache.hadoop.mapreduce.lib.input.FileSplit
 import org.apache.hadoop.mapreduce.InputSplit
 import org.apache.hadoop.conf.Configuration
 import java.util.UUID
 
-//import com.ambiata.mundane.path._
 import com.ambiata.poacher.hdfs._
 
 case class ContextId(value: String)
