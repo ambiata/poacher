@@ -21,10 +21,10 @@ class ConfigurationTemporarySpec extends Specification with ScalaCheck { def is 
    ${ withConfX(conf => conf.get("scoobi.dir")) must beOkLike(s => s.endsWith("/"))  }
 
    ${ prop((id: Ident) => ConfigurationTemporary(id.value).conf.map(_.get("scoobi.dir")) must
-        beOkLike(_.endsWith(id.value + "/"))) }
+        beOkLike(_.endsWith(id.value + "/1/"))) }
 
    ${ prop((id: Ident) => ConfigurationTemporary(id.value + "/").conf.map(_.get("scoobi.dir")) must
-        beOkLike(_.endsWith(id.value + "/"))) }
+        beOkLike(_.endsWith(id.value + "/1/"))) }
 
 
   Configuration has non-default hadoop.tmp.dir

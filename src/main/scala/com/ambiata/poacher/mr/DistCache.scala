@@ -29,9 +29,8 @@ case class DistCache(base: HdfsPath, contextId: ContextId) {
 
   def pushView(job: Job, key: DistCache.Key, bytes: Array[Byte], length: Int): Unit = {
     val nskey = key.namespaced(contextId.value)
-    val tmp = s"${base}/${nskey.combined}"
-    val uri = new URI(tmp + "#" + nskey.combined)
-    val path = HdfsPath.fromString(tmp)
+    val path = base /- nskey.combined
+    val uri = new URI(path.path.path + "#" + nskey.combined)
     (path.writeWith(out => Hdfs.safe(out.write(bytes, 0, length))) >> Hdfs.safe {
       addCacheFile(uri, job)
     }).run(job.getConfiguration).unsafePerformIO match {
