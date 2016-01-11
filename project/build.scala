@@ -9,12 +9,15 @@ import scoverage.ScoverageSbtPlugin._
 object build extends Build {
   type Settings = Def.Setting[_]
 
+  lazy val ossBucket: String =
+    sys.env.getOrElse("AMBIATA_IVY_OSS", "ambiata-oss")
+
   lazy val poacher = Project(
     id = "poacher"
   , base = file(".")
   , settings =
     standardSettings ++
-    promulgate.library(s"com.ambiata.poacher", "ambiata-oss") ++
+    promulgate.library(s"com.ambiata.poacher", ossBucket) ++
     Seq[Settings](libraryDependencies ++= depend.scalaz ++ depend.mundane ++ depend.scoobi(version.value) ++ depend.hadoop(version.value) ++ depend.specs2 ++ depend.thrift ++ depend.shapeless ++ depend.disorder)
   )
 
