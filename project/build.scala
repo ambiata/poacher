@@ -12,12 +12,15 @@ object build extends Build {
   lazy val hadoopVersion =
     Option(System.getenv("HADOOP_VERSION")).getOrElse("yarn")
 
+  lazy val ossBucket: String =
+    sys.env.getOrElse("AMBIATA_IVY_OSS", "ambiata-oss")
+
   lazy val poacher = Project(
     id = "poacher"
   , base = file(".")
   , settings =
     standardSettings ++
-    promulgate.library(s"com.ambiata.poacher", "ambiata-oss") ++
+    promulgate.library(s"com.ambiata.poacher", ossBucket) ++
     Seq[Settings](libraryDependencies ++= depend.scalaz ++ depend.mundane ++ depend.scoobi(hadoopVersion) ++ depend.hadoop(hadoopVersion) ++ depend.specs2 ++ depend.thrift ++ depend.shapeless ++ depend.disorder)
   )
 

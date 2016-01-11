@@ -15,10 +15,13 @@ object depend {
                       "org.specs2"           %% "specs2-scalacheck").map(_ % "2.4.5").map(_ % "test")
   val commonsio = Seq("commons-io"           %  "commons-io"      % "2.4")
   val thrift    = Seq("org.apache.thrift"    %  "libthrift"       % "0.9.1" excludeAll ExclusionRule(organization = "org.apache.httpcomponents"))
-  val mundaneVersion = "1.2.1-20150310040336-0ef1d8c"
+  val mundaneVersion = "1.2.1-20160108044905-83acfd2"
   val mundane   = Seq("com.ambiata"          %% "mundane-control",
+                      "com.ambiata"          %% "mundane-path",
                       "com.ambiata"          %% "mundane-io").map(_ % mundaneVersion) ++
-                  Seq("com.ambiata"          %% "mundane-testing" % mundaneVersion % "test")
+                  Seq("com.ambiata"          %% "mundane-testing",
+                      "com.ambiata"          %% "mundane-path",
+                      "com.ambiata"          %% "mundane-io").map(_ % mundaneVersion % "test->test")
 
   val shapeless = Seq("com.chuusai"          %% "shapeless"       % "2.0.0")
   val disorder =  Seq("com.ambiata"          %% "disorder"        % "0.0.1-20150219021345-bfcf0db" % "test")
@@ -51,5 +54,6 @@ object depend {
       "cloudera"             at "https://repository.cloudera.com/content/repositories/releases",
       "cloudera2"            at "https://repository.cloudera.com/artifactory/public",
       Resolver.url("ambiata-oss", new URL("https://ambiata-oss.s3.amazonaws.com"))(Resolver.ivyStylePatterns),
+      Resolver.url("ambiata-oss-v2", new URL("https://ambiata-oss-v2.s3.amazonaws.com"))(Resolver.ivyStylePatterns),
       "Scalaz Bintray Repo"  at "http://dl.bintray.com/scalaz/releases")
 }
