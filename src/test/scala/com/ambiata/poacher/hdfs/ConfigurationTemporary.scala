@@ -13,8 +13,8 @@ case class ConfigurationTemporary(path: String) {
   def conf: RIO[Configuration] = for {
     d <- LocalTemporary(Temporary.uniqueLocalPath, path).directory // Hdfsize
     c = new Configuration
-    _ = c.set("hadoop.tmp.dir", d.path)
-    _ = c.set("scoobi.dir", d.path + "/")
+    _ = c.set("hadoop.tmp.dir", d.path.path)
+    _ = c.set("scoobi.dir", d.path.path + "/")
   } yield c
 }
 
