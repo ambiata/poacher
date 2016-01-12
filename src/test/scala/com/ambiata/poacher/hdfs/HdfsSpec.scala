@@ -1,10 +1,7 @@
 package com.ambiata.poacher.hdfs
 
-import Arbitraries._
 import org.specs2._
-import org.apache.hadoop.fs.Path
 import java.io.File
-import com.ambiata.mundane.testing.RIOMatcher._
 import org.apache.hadoop.conf.Configuration
 
 import scalaz._, Scalaz._

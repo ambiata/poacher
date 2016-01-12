@@ -9,7 +9,6 @@ import java.io._
 
 import com.ambiata.mundane.control._
 import com.ambiata.mundane.io.{BytesQuantity, Streams, MemoryConversions}
-import MemoryConversions._
 
 case class Hdfs[A](run: Configuration => RIO[A]) {
   def map[B](f: A => B): Hdfs[B] =

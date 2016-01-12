@@ -54,6 +54,7 @@ object build extends Build {
       , "-feature"
       , "-language:_"
       , "-Ywarn-value-discard"
+      , "-Ywarn-unused-import"
       , "-Yno-adapted-args"
       , "-Xlint"
       , "-Xfatal-warnings"

@@ -2,8 +2,6 @@ package com.ambiata.poacher.mr
 
 import org.specs2._
 import org.specs2.matcher.ThrownExpectations
-import com.ambiata.mundane.control._
-import com.ambiata.mundane.io._
 import com.ambiata.mundane.path._
 
 import com.ambiata.poacher.hdfs._

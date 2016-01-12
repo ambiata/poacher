@@ -1,7 +1,6 @@
 package com.ambiata.poacher.hdfs
 
 import com.ambiata.disorder._
-import com.ambiata.mundane.control._
 import com.ambiata.poacher.hdfs.Arbitraries._
 import com.ambiata.poacher.hdfs.HdfsMatcher._
 import org.apache.hadoop.fs.Path

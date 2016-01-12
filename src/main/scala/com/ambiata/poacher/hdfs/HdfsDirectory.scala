@@ -1,6 +1,5 @@
 package com.ambiata.poacher.hdfs
 
-import com.ambiata.mundane.control._
 import com.ambiata.mundane.path._
 import com.ambiata.mundane.io._
 
@@ -9,7 +8,7 @@ import java.net.URI
 
 import org.apache.hadoop.fs.FileSystem
 
-import scalaz._, Scalaz._, effect.Effect._
+import scalaz._, Scalaz._
 
 /**
  * 'HdfsDirectory' represents a directory that exists on a hdfs file system

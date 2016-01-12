@@ -3,7 +3,6 @@ package com.ambiata.poacher.hdfs
 import com.ambiata.disorder._
 import com.ambiata.poacher.hdfs.ConfigurationTemporary._
 import com.ambiata.poacher.hdfs.HdfsMatcher._
-import com.ambiata.mundane.control._
 import com.ambiata.mundane.testing.RIOMatcher._
 import org.specs2._
 import org.apache.hadoop.fs.Path

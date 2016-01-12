@@ -2,7 +2,6 @@ package com.ambiata.poacher.mr
 
 import com.ambiata.mundane.path._
 import com.ambiata.poacher.hdfs._
-import com.ambiata.poacher.hdfs.HdfsPath._
 
 import scalaz._, Scalaz._
 

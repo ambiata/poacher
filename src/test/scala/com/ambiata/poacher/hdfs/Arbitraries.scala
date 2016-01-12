@@ -1,10 +1,7 @@
 package com.ambiata.poacher.hdfs
 
 import org.scalacheck._
-import Arbitrary._
-import scalaz._, Scalaz._, effect.IO
-import com.ambiata.mundane.control._
-import com.ambiata.mundane.io._
+import scalaz._, effect.IO
 import com.ambiata.disorder.GenPlus
 
 object Arbitraries {

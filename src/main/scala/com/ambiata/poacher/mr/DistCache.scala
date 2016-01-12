@@ -3,7 +3,6 @@ package com.ambiata.poacher.mr
 import com.ambiata.poacher.Compatibility
 import com.ambiata.poacher.hdfs._
 import com.ambiata.mundane.control._
-import com.ambiata.mundane.io._
 
 import java.net.URI
 

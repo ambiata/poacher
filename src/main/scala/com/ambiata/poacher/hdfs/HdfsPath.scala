@@ -1,6 +1,5 @@
 package com.ambiata.poacher.hdfs
 
-import com.ambiata.mundane.control._
 import com.ambiata.mundane.data._
 import com.ambiata.mundane.io._
 import com.ambiata.mundane.path._
@@ -12,7 +11,6 @@ import org.apache.hadoop.fs.FileSystem
 
 import scala.io.Codec
 import scalaz._, Scalaz._, effect.Effect._
-import MemoryConversions._
 
 /**
  * 'HdfsPath' is an unknown hdfs location which means that
