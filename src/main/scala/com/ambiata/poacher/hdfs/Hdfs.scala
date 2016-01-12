@@ -4,7 +4,7 @@ import java.util.UUID
 
 import scalaz._, Scalaz._, \&/._, effect._, Effect._
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{FileContext, FileSystem, FileUtil, Path}
+import org.apache.hadoop.fs.{FileContext, FileSystem, FileUtil}
 import java.io._
 
 import com.ambiata.mundane.control._
@@ -25,9 +25,6 @@ case class Hdfs[A](run: Configuration => RIO[A]) {
 
   def |||(other: Hdfs[A]): Hdfs[A] =
     Hdfs(c => run(c) ||| other.run(c))
-
-  def filterHidden(implicit ev: A <:< List[Path]): Hdfs[List[Path]] =
-    map(_.filter(p => !p.getName.startsWith("_") && !p.getName.startsWith(".")))
 
   def unless(condition: Boolean): Hdfs[Unit] =
     Hdfs.unless(condition)(this)
