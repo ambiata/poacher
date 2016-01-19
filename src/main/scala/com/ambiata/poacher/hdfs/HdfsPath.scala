@@ -86,10 +86,10 @@ case class HdfsPath(path: Path) {
   def determinef[A](file: HdfsFile => Hdfs[A], directory: HdfsDirectory => Hdfs[A]): Hdfs[A] =
     determinefWith(file, directory, Hdfs.fail(s"Not a valid File or Directory. HdfsPath($path)"))
 
-  def determinefWithPure[A](file: HdfsFile => A, directory: HdfsDirectory => A, none: A): Hdfs[A] =
+  def determinefWithPure[A](file: HdfsFile => A, directory: HdfsDirectory => A, none: => A): Hdfs[A] =
     determinefWith(f => file(f).pure[Hdfs], d => directory(d).pure[Hdfs], none.pure[Hdfs])
 
-  def determinefWith[A](file: HdfsFile => Hdfs[A], directory: HdfsDirectory => Hdfs[A], none: Hdfs[A]): Hdfs[A] =
+  def determinefWith[A](file: HdfsFile => Hdfs[A], directory: HdfsDirectory => Hdfs[A], none: => Hdfs[A]): Hdfs[A] =
     determine >>= ({
       case Some(\/-(v)) =>
         directory(v)
