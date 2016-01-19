@@ -144,36 +144,17 @@ class HdfsFile private (val path: Path) extends AnyVal {
       })
     } yield r)
 
-  def writeWith[A](f: OutputStream => Hdfs[A]): Hdfs[A] = // not sure about this
+  def overwriteWith[A](f: OutputStream => Hdfs[A]): Hdfs[A] =
     Hdfs.using(toOutputStream)(o => f(o))
 
-  def writeStream(content: InputStream): Hdfs[Unit] =
-    Hdfs.using(toOutputStream)(o => Hdfs.fromRIO(Streams.pipe(content, o)))
-
-  def writeWithMode(content: String, mode: HdfsWriteMode): Hdfs[Unit] =
-    mode.fold(overwrite(content), toHdfsPath.write(content)).void
-
-  def writeWithEncodingMode(content: String, encoding: Codec, mode: HdfsWriteMode): Hdfs[Unit] =
-    mode.fold(
-        overwriteWithEncoding(content, encoding)
-      , toHdfsPath.writeWithEncoding(content, encoding)).void
-
-  def writeLinesWithMode(content: List[String], mode: HdfsWriteMode): Hdfs[Unit] =
-    mode.fold(overwriteLines(content), toHdfsPath.writeLines(content)).void
-
-  def writeLinesWithEncodingMode(content: List[String], encoding: Codec, mode: HdfsWriteMode): Hdfs[Unit] =
-    mode.fold(
-        overwriteLinesWithEncoding(content, encoding)
-      , toHdfsPath.writeLinesWithEncoding(content, encoding)).void
-
-  def writeBytesWithMode(content: Array[Byte], mode: HdfsWriteMode): Hdfs[Unit] =
-    mode.fold(overwriteBytes(content), toHdfsPath.writeBytes(content)).void
+  def overwriteStream(content: InputStream): Hdfs[Unit] =
+    overwriteWith(o => Hdfs.fromRIO(Streams.pipe(content, o)))
 
   def overwrite(content: String): Hdfs[Unit] =
     overwriteWithEncoding(content, Codec.UTF8)
 
   def overwriteWithEncoding(content: String, encoding: Codec): Hdfs[Unit] =
-    Hdfs.using(toOutputStream)(out => Hdfs.fromRIO(Streams.writeWithEncoding(out, content, encoding)))
+    overwriteWith(out => Hdfs.fromRIO(Streams.writeWithEncoding(out, content, encoding)))
 
   def overwriteLines(content: List[String]): Hdfs[Unit] =
     overwriteLinesWithEncoding(content, Codec.UTF8)
@@ -182,7 +163,7 @@ class HdfsFile private (val path: Path) extends AnyVal {
     overwriteWithEncoding(Lists.prepareForFile(content), encoding)
 
   def overwriteBytes(content: Array[Byte]): Hdfs[Unit] =
-    Hdfs.using(toOutputStream)(o => Hdfs.fromRIO(Streams.writeBytes(o, content)))
+    overwriteWith(o => Hdfs.fromRIO(Streams.writeBytes(o, content)))
 
   def move(destination: HdfsPath): Hdfs[HdfsFile] =
     doesExist(s"Source file does not exist. HdfsFile($path)",

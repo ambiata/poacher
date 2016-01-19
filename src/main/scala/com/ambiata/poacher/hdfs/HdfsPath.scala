@@ -226,9 +226,6 @@ case class HdfsPath(path: Path) {
     } yield r
   }
 
-  def writeWith[A](f: OutputStream => Hdfs[A]): Hdfs[A] =
-    Hdfs.using(toOutputStream)(o => f(o))
-
   def touch: Hdfs[Unit] = for {
     e <- exists
     s <- Hdfs.filesystem
@@ -240,34 +237,39 @@ case class HdfsPath(path: Path) {
     touch >>
       determinefWith(_.left[HdfsDirectory].pure[Hdfs], _.right[HdfsFile].pure[Hdfs], Hdfs.fail("Invariant"))
 
+  def writeWith[A](f: OutputStream => Hdfs[A]): Hdfs[A] = writeExists(for {
+    _ <- dirname.mkdirs
+    a <- Hdfs.using(toOutputStream)(o => f(o))
+  } yield a)
+
   def write(content: String): Hdfs[HdfsFile] =
     writeWithEncoding(content, Codec.UTF8)
 
-  def writeWithEncoding(content: String, encoding: Codec): Hdfs[HdfsFile] = writeExists(for {
-    _ <- dirname.mkdirs
-    _ <- Hdfs.using(toOutputStream){ out => Hdfs.fromRIO(Streams.writeWithEncoding(out, content, encoding)) }
-  } yield HdfsFile.unsafe(path.path))
+  def writeWithEncoding(content: String, encoding: Codec): Hdfs[HdfsFile] =
+    writeWith(out =>
+      Hdfs.fromRIO(Streams.writeWithEncoding(out, content, encoding))).as(HdfsFile.unsafe(path.path))
 
   def writeLines(content: List[String]): Hdfs[HdfsFile] =
     writeLinesWithEncoding(content, Codec.UTF8)
 
-  def writeLinesWithEncoding(content: List[String], encoding: Codec): Hdfs[HdfsFile] = writeExists(for {
-    _ <- dirname.mkdirs
-    r <- writeWithEncoding(Lists.prepareForFile(content), encoding)
-  } yield r)
+  def writeLinesWithEncoding(content: List[String], encoding: Codec): Hdfs[HdfsFile] =
+    writeWithEncoding(Lists.prepareForFile(content), encoding)
 
-  def writeBytes(content: Array[Byte]): Hdfs[HdfsFile] = writeExists(for {
-    _ <- dirname.mkdirs
-    _ <- Hdfs.using(toOutputStream)(o => Hdfs.fromRIO(Streams.writeBytes(o, content)))
-  } yield HdfsFile.unsafe(path.path))
+  def writeBytes(content: Array[Byte]): Hdfs[HdfsFile] =
+    writeWith(o =>
+      Hdfs.fromRIO(Streams.writeBytes(o, content))).as(HdfsFile.unsafe(path.path))
 
-  def writeStream(content: InputStream): Hdfs[HdfsFile] = writeExists(for {
-    _ <- dirname.mkdirs
-    _ <- Hdfs.using(toOutputStream)(o => Hdfs.fromRIO(Streams.pipe(content, o)))
-  } yield HdfsFile.unsafe(path.path))
+  def writeStream(content: InputStream): Hdfs[HdfsFile] =
+    writeWith(o =>
+      Hdfs.fromRIO(Streams.pipe(content, o))).as(HdfsFile.unsafe(path.path))
 
   def writeWithMode(content: String, mode: HdfsWriteMode): Hdfs[HdfsFile] =
     mode.fold(overwrite(content), write(content))
+
+  def writeWithModeWith[A](f: OutputStream => Hdfs[A], mode: HdfsWriteMode): Hdfs[A] =
+    mode.fold(
+        overwriteWith(f)
+      , writeWith(f))
 
   def writeWithEncodingMode(content: String, encoding: Codec, mode: HdfsWriteMode): Hdfs[HdfsFile] =
     mode.fold(
@@ -285,8 +287,11 @@ case class HdfsPath(path: Path) {
   def writeBytesWithMode(content: Array[Byte], mode: HdfsWriteMode): Hdfs[HdfsFile] =
     mode.fold(overwriteBytes(content), writeBytes(content))
 
+  def overwriteWith[A](f: OutputStream => Hdfs[A]): Hdfs[A] =
+    Hdfs.using(toOverwriteOutputStream)(o => f(o))
+
   def overwriteStream(content: InputStream): Hdfs[HdfsFile] =
-    Hdfs.using(toOverwriteOutputStream)(o =>
+    overwriteWith(o =>
       Hdfs.fromRIO(Streams.pipe(content, o))).as(HdfsFile.unsafe(path.path))
 
   def overwrite(content: String): Hdfs[HdfsFile] =
@@ -305,7 +310,7 @@ case class HdfsPath(path: Path) {
     overwriteWithEncoding(Lists.prepareForFile(content), encoding)
 
   def overwriteBytes(content: Array[Byte]): Hdfs[HdfsFile] =
-    Hdfs.using(toOverwriteOutputStream)(o =>
+    overwriteWith(o =>
       Hdfs.fromRIO(Streams.writeBytes(o, content))).as(HdfsFile.unsafe(path.path))
 
   def move(destination: HdfsPath): Hdfs[HdfsPath] =

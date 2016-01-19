@@ -15,7 +15,7 @@ import org.apache.hadoop.conf.Configuration
 import scala.io.Codec
 
 import org.specs2._
-import scalaz._, Scalaz._, effect.Effect._
+import scalaz._, Scalaz._
 
 class HdfsFileSpec extends Specification with ScalaCheck { def is = s2"""
 
@@ -256,100 +256,6 @@ class HdfsFileSpec extends Specification with ScalaCheck { def is = s2"""
 
 
   HdfsFile should be able to append different content to files that exist >> LOL.jokes
-
-  HdfsFile should be able to write different content to files using different Encodings and Mode's.
-
-    ${ prop((s: S, l: HdfsTemporary) => for {
-         a <- l.fileWithContent(s.value)
-         b <- l.file
-         _ <- Hdfs.using(a.toInputStream)(in => b.writeStream(in))
-         r <- b.readOrFail
-       } yield r ==== s.value)
-     }
-
-    Can write to a file with different mode's.
-
-      ${ prop((s: DistinctPair[S], l: HdfsTemporary) => for {
-           f <- l.fileWithContent(s.first.value)
-           _ <- f.writeWithMode(s.second.value, HdfsWriteMode.Overwrite)
-           r <- f.readOrFail
-         } yield r ==== s.second.value)
-       }
-
-      ${ prop((s: DistinctPair[S], l: HdfsTemporary) => (for {
-           f <- l.fileWithContent(s.first.value)
-           _ <- f.writeWithMode(s.second.value, HdfsWriteMode.Fail)
-         } yield ()) must beFail)
-       }
-
-    Can write to files with different modes using different encodings
-
-      ${ prop((a: EncodingS, b: EncodingS, l: HdfsTemporary) => (a.codec == b.codec) ==> (for {
-           p <- l.path
-           f <- p.writeWithEncoding(a.value, a.codec)
-           _ <- f.writeWithEncodingMode(b.value, b.codec, HdfsWriteMode.Overwrite)
-           r <- f.readWithEncoding(b.codec)
-         } yield r ==== b.value.some))
-       }
-
-      ${ prop((a: EncodingS, b: EncodingS, l: HdfsTemporary) => (for {
-           p <- l.path
-           f <- p.writeWithEncoding(a.value, a.codec)
-           _ <- f.writeWithEncodingMode(b.value, b.codec, HdfsWriteMode.Fail)
-         } yield ()) must beFail )
-       }
-
-    Can write lines to a file with different mode's.
-
-      ${ prop((a: List[N], b: List[N], l: HdfsTemporary) => for {
-           p <- l.path
-           f <- p.writeLines(a.map(_.value))
-           _ <- f.writeLinesWithMode(b.map(_.value), HdfsWriteMode.Overwrite)
-           r <- f.readLines
-         } yield r ==== b.map(_.value).some)
-       }
-
-      ${ prop((a: List[N], b: List[N], l: HdfsTemporary) => (for {
-           p <- l.path
-           f <- p.writeLines(a.map(_.value))
-           _ <- f.writeLinesWithMode(b.map(_.value), HdfsWriteMode.Fail)
-         } yield ()) must beFail)
-       }
-
-
-    Can write lines with different Codec's and Mode's
-
-      ${ prop((a: EncodingListN, b: EncodingListN, l: HdfsTemporary) => for {
-           p <- l.path
-           f <- p.writeLinesWithEncoding(a.value, a.codec)
-           _ <- f.writeLinesWithEncodingMode(b.value, b.codec, HdfsWriteMode.Overwrite)
-           r <- f.readLinesWithEncoding(b.codec)
-         } yield r ==== (b.value.some))
-       }
-
-      ${ prop((a: EncodingListN, b: EncodingListN, l: HdfsTemporary) => (for {
-           p <- l.path
-           f <- p.writeLinesWithEncoding(a.value, a.codec)
-           _ <- f.writeLinesWithEncodingMode(b.value, b.codec, HdfsWriteMode.Fail)
-         } yield ()) must beFail)
-       }
-
-    Can write bytes with different Mode's
-
-      ${ prop((a: Array[Byte], b: Array[Byte], l: HdfsTemporary) => for {
-           p <- l.path
-           f <- p.writeBytes(a)
-           _ <- f.writeBytesWithMode(b, HdfsWriteMode.Overwrite)
-           r <- f.readBytes
-         } yield r.map(_.toList) ==== b.toList.some)
-       }
-
-      ${ prop((a: Array[Byte], l: HdfsTemporary) => (for {
-           p <- l.path
-           f <- p.writeBytes(a)
-           _ <- f.writeBytesWithMode(a, HdfsWriteMode.Fail)
-         } yield ()) must beFail)
-       }
 
   HdfsFile should be able to overwrite content in files
 
