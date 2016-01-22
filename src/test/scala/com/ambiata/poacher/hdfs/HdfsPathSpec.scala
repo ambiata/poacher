@@ -282,6 +282,14 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
          } yield r ==== 4.some)
        }
 
+    Should fail when calling numberOfFilesOrFail and the path doesn't exist
+
+      ${ prop((h: HdfsTemporary) => (for {
+           p <- h.path
+           _ <- p.numberOfFilesOrFail
+         } yield ()) must beFail)
+       }
+
 
   HdfsPath should be able to create directories
 
@@ -570,6 +578,23 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
            p <- l.path
            _ <- p.writeBytes(a)
            _ <- p.writeBytesWithMode(a, HdfsWriteMode.Fail)
+         } yield ()) must beFail)
+       }
+
+    Can write a string using OutputStream to files with different modes
+
+      ${ prop((s: DistinctPair[S], l: HdfsTemporary) => for {
+           p <- l.path
+           _ <- p.write(s.first.value)
+           _ <- p.writeWithModeWith(o => Hdfs.fromRIO(Streams.writeWithEncoding(o, s.second.value, Codec.UTF8)), HdfsWriteMode.Overwrite)
+           r <- p.readOrFail
+         } yield r ==== s.second.value)
+       }
+
+      ${ prop((s: DistinctPair[S], l: HdfsTemporary) => (for {
+           p <- l.path
+           _ <- p.write(s.first.value)
+           _ <- p.writeWithModeWith(o => Hdfs.fromRIO(Streams.writeWithEncoding(o, s.second.value, Codec.UTF8)), HdfsWriteMode.Fail)
          } yield ()) must beFail)
        }
 
