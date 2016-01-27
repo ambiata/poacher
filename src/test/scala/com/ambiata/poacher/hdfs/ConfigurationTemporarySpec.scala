@@ -2,7 +2,7 @@ package com.ambiata.poacher.hdfs
 
 import com.ambiata.disorder._
 import com.ambiata.poacher.hdfs.ConfigurationTemporary._
-import com.ambiata.mundane.control._
+import com.ambiata.poacher.hdfs.HdfsMatcher._
 import com.ambiata.mundane.testing.RIOMatcher._
 import org.specs2._
 import org.apache.hadoop.fs.Path
@@ -20,10 +20,10 @@ class ConfigurationTemporarySpec extends Specification with ScalaCheck { def is 
    ${ withConfX(conf => conf.get("scoobi.dir")) must beOkLike(s => s.endsWith("/"))  }
 
    ${ prop((id: Ident) => ConfigurationTemporary(id.value).conf.map(_.get("scoobi.dir")) must
-        beOkLike(_.endsWith(id.value + "/"))) }
+        beOkLike(_.endsWith(id.value + "/1/"))) }
 
    ${ prop((id: Ident) => ConfigurationTemporary(id.value + "/").conf.map(_.get("scoobi.dir")) must
-        beOkLike(_.endsWith(id.value + "/"))) }
+        beOkLike(_.endsWith(id.value + "/1/"))) }
 
 
   Configuration has non-default hadoop.tmp.dir
@@ -36,13 +36,13 @@ class ConfigurationTemporarySpec extends Specification with ScalaCheck { def is 
 
 """
 
-  def cleanup = prop((id: Ident, data: String) => for {
-    c <- ConfigurationTemporary.random.conf
+  def cleanup = prop((id: Ident, data: S) => for {
+    c <- ConfigurationTemporary.random.hconf
     z = c.get("hadoop.tmp.dir")
-    p = new Path(z, id.value)
-    _ <- Hdfs.write(p, data).run(c)
-    b <- Hdfs.exists(p).run(c)
-    _ <- RIO.unsafeFlushFinalizers
-    a <- Hdfs.exists(p).run(c)
+    p = HdfsPath.fromString(z) /- id.value
+    _ <- p.write(data.value)
+    b <- p.exists
+    _ <- Hdfs.unsafeFlushFinalizers
+    a <- p.exists
   } yield b -> a ==== true -> false)
 }

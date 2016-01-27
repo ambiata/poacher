@@ -2,72 +2,99 @@ package com.ambiata.poacher.mr
 
 import org.specs2._
 import org.specs2.matcher.ThrownExpectations
-import com.ambiata.mundane.control._
-import com.ambiata.mundane.io._
+import com.ambiata.mundane.path._
 
 import com.ambiata.poacher.hdfs._
+import com.ambiata.poacher.hdfs.Arbitraries._
+import com.ambiata.poacher.hdfs.HdfsMatcher._
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.conf.Configuration
 import scalaz._, Scalaz._
 
-class CommitterSpec extends Specification with ThrownExpectations { def is = s2"""
+class CommitterSpec extends Specification with ScalaCheck with ThrownExpectations { def is = s2"""
 
 Committer
 -----------
 
-  Commit multiple dirs (targets don't exist)    $e1
-  Commit files fails                            $e2
-  Target dir exists                             $exists
-  Target dir exists with hidden files only      $hidden
-  Commit nested dirs                            $nestedDir
+  Commit multiple dirs (targets don't exist)
+
+    ${ prop((h: HdfsTemporary) => for {
+         p <- h.path
+         c = MrContext(ContextId.randomContextId)
+         o = c.output
+         _ <- (o /- "path1/f1").write("test1") >> (o /- "path2/f2").write("test2")
+         _ <- Committer.commit(c, oc => if (oc == Component("path1").some) p /- "p1" else p /- "p2", true)
+         a <- (p /- "p1/f1").readOrFail
+         b <- (p /- "p2/f2").readOrFail
+       } yield a -> b ==== "test1" -> "test2")
+     }
+
+  Commit files fails
+
+    ${ prop((h: HdfsTemporary) => (for {
+         p <- h.path
+         c = MrContext(ContextId.randomContextId)
+         o = c.output
+         _ <- (o /- "f1").write("test1")
+         _ <- Committer.commit(c, _ => p /- "p1", true)
+       } yield ()) must beFail)
+     }
+
+  Target dir exists
+
+    ${ prop((h: HdfsTemporary) => for {
+         p <- h.path
+         e <- (p /- "p1").mkdirs
+         c = MrContext(ContextId.randomContextId)
+         o = c.output
+         _ <- (o /- "path1/f1").write("test1")
+         _ <- Committer.commit(c, _ => p /- "p1", true)
+         a <- (p /- "p1/f1").readOrFail
+       } yield e.as(a) ==== "test1".some)
+     }
+
+  Target dir exists with hidden files only
+
+    ${ prop((h: HdfsTemporary) => for {
+         p <- h.path
+         d = p /- "p1"
+         e <- d.mkdirs
+         _ <- (d /- ".hidden").write("test")
+         c = MrContext(ContextId.randomContextId)
+         o = c.output
+         _ <- (o /- "path1/f1").write("test1")
+         _ <- Committer.commit(c, _ => d, true)
+         a <- (p /- "p1/f1").readOrFail
+       } yield e.as(a) ==== "test1".some)
+     }
+
+  Target dir exists with non hidden files fails
+
+    ${ prop((h: HdfsTemporary) => (for {
+         p <- h.path
+         d = p /- "p1"
+         _ <- d.mkdirs
+         _ <- (d /- "nonhidden").write("test")
+         c = MrContext(ContextId.randomContextId)
+         o = c.output
+         _ <- (o /- "path1/f1").write("test1")
+         _ <- Committer.commit(c, _ => d, true)
+       } yield ()) must beFail)
+     }
+
+  Commit nested dirs
+
+    ${ prop((h: HdfsTemporary) => for {
+         p <- h.path
+         c = MrContext(ContextId.randomContextId)
+         o = c.output
+         _ <- (o /- "path1/s1/f1").write("test1") >> (o /- "path2/s2/s3/f2").write("test2")
+         _ <- Committer.commit(c, oc => if (oc == Component("path1").some) p /- "p1" else p /- "p2", true)
+         a <- (p /- "p1/s1/f1").readOrFail
+         b <- (p /- "p2/s2/s3/f2").readOrFail
+       } yield a -> b ==== "test1" -> "test2")
+     }
 
 """
 
-  def e1 =
-    commit((ctx, _) =>
-      writeFile(new Path(ctx.output, "path1/f1"), "test1") >>
-        writeFile(new Path(ctx.output, "path2/f2"), "test2"),
-      (target, p) => if (p == "path1") new Path(target, "p1") else new Path(target, "p2"),
-      List("p1/f1" -> "test1", "p2/f2" -> "test2")
-    ).toEither must beRight
-
-  def e2 =
-    commit((ctx, _) => writeFile(new Path(ctx.output, "f1"), "test1"),
-      (target, _) => target, Nil).toEither must beLeft
-
-  def exists =
-    commit((ctx, target) =>
-      Hdfs.mkdir(target) >> writeFile(new Path(ctx.output, "path1/f1"), "test1") >> writeFile(new Path(target, "path1/f1"), "test1"),
-      (target, _) => target, List("f1" -> "test1")
-    ).toEither must beLeft
-
-  def hidden =
-    commit((ctx, target) =>
-      Hdfs.mkdir(target) >> writeFile(new Path(target, "path1/.f1"), "test1"),
-      (target, _) => target, nil
-    ).toEither must beRight
-
-  def nestedDir =
-    commit((ctx, _) => writeFile(new Path(ctx.output, "path1/f1/f2"), "test1"),
-      (target, _) => new Path(target, "p1"), List("p1/f1/f2" -> "test1")
-    ).toEither must beRight
-
-  def readFile(path: Path): Hdfs[String] =
-    Hdfs.readWith(path, is => Streams.read(is))
-
-  def writeFile(path: Path, content: String): Hdfs[Unit] =
-    Hdfs.writeWith(path, os => Streams.write(os, content))
-
-  private def commit(pre: (MrContext, Path) => Hdfs[Unit],
-                     mapping: (Path, String) => Path,
-                     expected: List[(String, String)]): Result[Unit] = (for {
-    c <- ConfigurationTemporary.random.conf
-    t = MrContext(ContextId.randomContextId)
-    _ <- (for {
-      p <- HdfsTemporary.random.path
-      _ <- pre(t, p)
-      _ <- Committer.commit(t, mapping(p, _), cleanup = true)
-      _ <- expected.traverse({ case (path, e) => readFile(new Path(p, path)).map(_ must_== e) })
-    } yield ()).run(c)
-  } yield ()).unsafePerformIO
 }

@@ -3,13 +3,11 @@ package com.ambiata.poacher.mr
 import com.ambiata.poacher.Compatibility
 import com.ambiata.poacher.hdfs._
 import com.ambiata.mundane.control._
-import com.ambiata.mundane.io._
 
 import java.net.URI
 
 import scalaz._, Scalaz._
 
-import org.apache.hadoop.fs.Path
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.mapreduce.Job
 
@@ -18,7 +16,7 @@ import org.apache.hadoop.mapreduce.Job
  * _unsafe_ at best, and should be used with extreme caution. The only valid reason to
  * use it is when writing raw map reduce jobs.
  */
-case class DistCache(base: Path, contextId: ContextId) {
+case class DistCache(base: HdfsPath, contextId: ContextId) {
 
   /** Push a representation of a data-type to the distributed cache for this job, under the
      specified key. A namespace is added to the key to make it unique for each instance
@@ -30,9 +28,9 @@ case class DistCache(base: Path, contextId: ContextId) {
 
   def pushView(job: Job, key: DistCache.Key, bytes: Array[Byte], length: Int): Unit = {
     val nskey = key.namespaced(contextId.value)
-    val tmp = s"${base}/${nskey.combined}"
-    val uri = new URI(tmp + "#" + nskey.combined)
-    (Hdfs.writeWith(new Path(tmp), out => RIO.safe(out.write(bytes, 0, length))) >> Hdfs.safe {
+    val path = base /- nskey.combined
+    val uri = new URI(path.path.path + "#" + nskey.combined)
+    (path.writeWith(out => Hdfs.safe(out.write(bytes, 0, length))) >> Hdfs.safe {
       addCacheFile(uri, job)
     }).run(job.getConfiguration).unsafePerformIO match {
       case Ok(_) =>
@@ -48,7 +46,12 @@ case class DistCache(base: Path, contextId: ContextId) {
      _hard_ if anything goes wrong. */
   def pop[A](conf: Configuration, key: DistCache.Key, f: Array[Byte] => String \/ A): A = {
     val nskey = key.namespaced(contextId.value)
-    Files.readBytes(FilePath.unsafe(Compatibility.findCacheFile(conf, nskey))).flatMap(bytes => RIO.safe { f(bytes) }).unsafePerformIO match {
+    val p = HdfsPath.fromString(Compatibility.findCacheFile(conf, nskey))
+    (for {
+      d <- p.readBytes
+      z <- Hdfs.fromOption(d, s"$p was empty.")
+      r <- Hdfs.safe(f(z))
+    } yield r).run(conf).unsafePerformIO match {
       case Ok(\/-(a)) =>
         a
       case Ok(-\/(s)) =>

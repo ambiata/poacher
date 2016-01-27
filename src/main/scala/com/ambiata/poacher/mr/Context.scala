@@ -1,6 +1,5 @@
 package com.ambiata.poacher.mr
 
-import org.apache.hadoop.fs.Path
 import org.apache.hadoop.mapreduce.Job
 import org.apache.hadoop.mapreduce.lib.input.FileSplit
 import org.apache.hadoop.mapreduce.InputSplit
@@ -23,20 +22,20 @@ object ContextId {
  * This is used to handle tmp paths for output and dist cache
  */
 case class MrContext(id: ContextId) {
-  val tmpBase: Path =
-    new Path(s"/tmp/${id.value}")
+  val tmpBase: HdfsPath =
+    HdfsPath.fromString(s"/tmp/${id.value}")
 
-  val output: Path =
-    new Path(tmpBase, "output")
+  val output: HdfsPath =
+    tmpBase /- "output"
 
   val distCache: DistCache =
-    DistCache(new Path(tmpBase, "dist-cache"), id)
+    DistCache(tmpBase /- "dist-cache", id)
 
   val thriftCache: ThriftCache =
-    ThriftCache(new Path(tmpBase, "dist-cache-thrift"), id)
+    ThriftCache(tmpBase /- "dist-cache-thrift", id)
 
   def cleanup: Hdfs[Unit] =
-    Hdfs.deleteAll(tmpBase)
+    tmpBase.delete
 }
 
 object MrContext {
@@ -57,7 +56,7 @@ object MrContext {
   /**
    * WARNING: This method uses reflection and should _only_ be used in setup methods (unless we find an alternative)
    */
-  def getSplitPath(split: InputSplit): Path = {
+  def getSplitPath(split: InputSplit): HPath = {
     // Evil reflection, but unfortunately doing this via a package-protected class would fail in local mode
     (if (split.getClass.getSimpleName == "TaggedInputSplit") {
       Option(split.getClass.getDeclaredMethod("getInputSplit")).flatMap { method =>

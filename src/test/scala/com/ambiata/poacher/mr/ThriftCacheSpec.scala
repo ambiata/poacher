@@ -1,6 +1,6 @@
 package com.ambiata.poacher.mr
 
-import com.ambiata.mundane.io._
+import com.ambiata.poacher.hdfs._
 import com.ambiata.poacher.thrift.KeyValueTest
 
 import org.specs2._, matcher._
@@ -31,7 +31,7 @@ ThriftCache
     job.setInputFormatClass(classOf[TextInputFormat])
     job.setMapOutputKeyClass(classOf[LongWritable])
     job.setMapOutputValueClass(classOf[Text])
-    Files.write(FilePath.unsafe("target/test/in/ThriftCacheSpec.csv"), "fred,10\nbarney,1000\n").unsafePerformIO
+    HdfsPath.fromString("target/test/in/ThriftCacheSpec.csv").write("fred,10\nbarney,1000\n").run(conf).unsafePerformIO
     FileInputFormat.addInputPaths(job, "target/test/in/ThriftCacheSpec.csv")
     FileOutputFormat.setOutputPath(job, new Path("target/test/out/ThriftCacheSpec-" + java.util.UUID.randomUUID))
     val kv = new KeyValueTest("key", "value")
