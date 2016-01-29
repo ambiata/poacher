@@ -69,6 +69,9 @@ class HdfsFile private (val path: Path) extends AnyVal {
   def lastModified: Hdfs[Long] =
     withFileSystem(fs => fs.getFileStatus(toHPath).getModificationTime)
 
+  def readWith[A](f: InputStream => Hdfs[A]): Hdfs[A] =
+    Hdfs.using(toInputStream)(i => f(i))
+
   def read: Hdfs[Option[String]] =
     readWithEncoding(Codec.UTF8)
 
@@ -76,7 +79,7 @@ class HdfsFile private (val path: Path) extends AnyVal {
     read.flatMap(Hdfs.fromOption(_, s"Failed to read file - HdfsFile($path) does not exist"))
 
   def readWithEncoding(encoding: Codec): Hdfs[Option[String]] =
-    optionExists(Hdfs.using(toInputStream){ in => Hdfs.fromRIO(Streams.readWithEncoding(in, encoding)) })
+    optionExists(readWith(in => Hdfs.fromRIO(Streams.readWithEncoding(in, encoding))))
 
   def readLines: Hdfs[Option[List[String]]] =
     readLinesWithEncoding(Codec.UTF8)
@@ -87,7 +90,7 @@ class HdfsFile private (val path: Path) extends AnyVal {
 
   def doPerLine[A](f: String => Hdfs[Unit]): Hdfs[Unit] = for {
     c <- Hdfs.configuration
-    _ <- Hdfs.using(toInputStream)(in =>
+    _ <- readWith(in =>
       Hdfs.io {
         val reader = new java.io.BufferedReader(new java.io.InputStreamReader(in, "UTF-8"))
         var line: String = null
@@ -118,10 +121,10 @@ class HdfsFile private (val path: Path) extends AnyVal {
     }
 
   def readBytes: Hdfs[Option[Array[Byte]]] =
-    optionExists(Hdfs.using(toInputStream)(o => Hdfs.fromRIO(Streams.readBytes(o))))
+    optionExists(readWith(o => Hdfs.fromRIO(Streams.readBytes(o))))
 
-  def readUnsafe[A](f: InputStream => Hdfs[Unit]): Hdfs[Unit] =
-    Hdfs.using(toInputStream)(f)
+  def readUnsafe(f: InputStream => Hdfs[Unit]): Hdfs[Unit] =
+    readWith(f).void
 
   def size: Hdfs[Option[BytesQuantity]] =
     optionExists(withFileSystem(_.getFileStatus(toHPath).getLen.bytes))

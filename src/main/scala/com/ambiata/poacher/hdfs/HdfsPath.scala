@@ -117,53 +117,56 @@ case class HdfsPath(path: Path) {
   def toOverwriteOutputStream: Hdfs[OutputStream] =
     withFileSystem(fs => fs.create(toHPath, true))
 
-  def readWith[A](thunk: HdfsFile => Hdfs[A]): Hdfs[A] =
+  def readWith[A](f: InputStream => Hdfs[A]): Hdfs[A] =
+    readWithFile(_.readWith(f))
+
+  def readWithFile[A](thunk: HdfsFile => Hdfs[A]): Hdfs[A] =
     determinefWith(
         thunk
       , _ => Hdfs.fail(s"Can not read a directory, HdfsDirectory($path).")
       , Hdfs.fail(s"Can not read nothing, HdfsPath($path)."))
 
-  def readWithOption[A](thunk: HdfsFile => Hdfs[Option[A]]): Hdfs[Option[A]] =
+  def readWithFileOption[A](thunk: HdfsFile => Hdfs[Option[A]]): Hdfs[Option[A]] =
     determinefWith(
         thunk
       , _ => Hdfs.fail(s"Can not read a directory, HdfsDirectory($path).")
       , none.pure[Hdfs])
 
   def read: Hdfs[Option[String]] =
-    readWithOption(_.read)
+    readWithFileOption(_.read)
 
   def readOrFail: Hdfs[String] =
-    readWith(_.readOrFail)
+    readWithFile(_.readOrFail)
 
   def readWithEncoding(encoding: Codec): Hdfs[Option[String]] =
-    readWithOption(_.readWithEncoding(encoding))
+    readWithFileOption(_.readWithEncoding(encoding))
 
   def readLines: Hdfs[Option[List[String]]] =
-    readWithOption(_.readLines)
+    readWithFileOption(_.readLines)
 
   def readLinesWithEncoding(encoding: Codec): Hdfs[Option[List[String]]] =
-    readWithOption(_.readLinesWithEncoding(encoding))
+    readWithFileOption(_.readLinesWithEncoding(encoding))
 
   def doPerLine[A](f: String => Hdfs[Unit]): Hdfs[Unit] =
-    readWith(_.doPerLine(f))
+    readWithFile(_.doPerLine(f))
 
   def readPerLine[A](empty: => A)(f: (String, A) => A): Hdfs[A] =
-    readWith(_.readPerLine(empty)(f))
+    readWithFile(_.readPerLine(empty)(f))
 
   def readPerLineWithEncoding[A](codec: Codec, empty: => A)(f: (String, A) => A): Hdfs[A] =
-    readWith(_.readPerLineWithEncoding(codec, empty)(f))
+    readWithFile(_.readPerLineWithEncoding(codec, empty)(f))
 
   def readBytes: Hdfs[Option[Array[Byte]]] =
-    readWithOption(_.readBytes)
+    readWithFileOption(_.readBytes)
 
   def readUnsafe[A](f: InputStream => Hdfs[Unit]): Hdfs[Unit] =
-    readWith(_.readUnsafe(f))
+    readWithFile(_.readUnsafe(f))
 
   def checksum(algorithm: ChecksumAlgorithm): Hdfs[Option[Checksum]] =
-    readWithOption(_.checksum(algorithm))
+    readWithFileOption(_.checksum(algorithm))
 
   def lineCount: Hdfs[Option[Int]] =
-    readWithOption(_.lineCount)
+    readWithFileOption(_.lineCount)
 
   def writeExists[A](thunk: => Hdfs[A]): Hdfs[A] =
     doesNotExist(s"A file or directory already exists in the specified location, HdfsPath($path).", thunk)
