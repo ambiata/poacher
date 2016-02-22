@@ -373,7 +373,7 @@ case class HdfsPath(path: Path) {
     determinef(_ => nil.pure[Hdfs], _.listFilesRelativeTo)
 
   def listFilesRecursivelyRelativeTo: Hdfs[List[(HdfsFile, HdfsPath)]] =
-    determinef(_ => nil.pure[Hdfs], _.listFilesRelativeTo)
+    determinef(_ => nil.pure[Hdfs], _.listFilesRecursivelyRelativeTo)
 
   def listFilesRecursively: Hdfs[List[HdfsFile]] =
     determinef(f => List(f).pure[Hdfs], _.listFilesRecursively)

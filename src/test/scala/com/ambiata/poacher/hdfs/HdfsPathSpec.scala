@@ -888,6 +888,18 @@ class HdfsPathSpec extends Specification with ScalaCheck with DisjunctionMatcher
             Path(v.first.name) | v.first, Path(v.first.name) | v.first | v.second).map(_.some).sorted)
        }
 
+    List files recursively relative to
+
+      ${ prop((v: DistinctPair[Component], local: HdfsTemporary) => for {
+           p <- local.path
+           _ <- (p | v.first | v.second).touch
+           _ <- (p | v.first | v.first | v.second).touch
+           _ <- (p | v.second).touch
+           r <- p.listFilesRecursivelyRelativeTo.map(_.map(_._2.path))
+         } yield r.sorted ==== List(Path(v.second.name), Path(v.first.name) | v.second,
+            Path(v.first.name) | v.first | v.second).sorted)
+       }
+
 
   HdfsPath should be able to glob files/directories/paths at a single level
 
