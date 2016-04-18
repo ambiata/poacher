@@ -23,7 +23,7 @@ Committer
          c = MrContext(ContextId.randomContextId)
          o = c.output
          _ <- (o /- "path1/f1").write("test1") >> (o /- "path2/f2").write("test2")
-         _ <- Committer.commit(c, oc => if (oc == Component("path1").some) p /- "p1" else p /- "p2", true)
+         _ <- Committer.commit(c, oc => if (oc == Component("path1")) p /- "p1" else p /- "p2", true)
          a <- (p /- "p1/f1").readOrFail
          b <- (p /- "p2/f2").readOrFail
        } yield a -> b ==== "test1" -> "test2")
@@ -89,7 +89,7 @@ Committer
          c = MrContext(ContextId.randomContextId)
          o = c.output
          _ <- (o /- "path1/s1/f1").write("test1") >> (o /- "path2/s2/s3/f2").write("test2")
-         _ <- Committer.commit(c, oc => if (oc == Component("path1").some) p /- "p1" else p /- "p2", true)
+         _ <- Committer.commit(c, oc => if (oc == Component("path1")) p /- "p1" else p /- "p2", true)
          a <- (p /- "p1/s1/f1").readOrFail
          b <- (p /- "p2/s2/s3/f2").readOrFail
        } yield a -> b ==== "test1" -> "test2")

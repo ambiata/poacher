@@ -19,11 +19,11 @@ object Committer {
    * If the destination dir or any of the children in context.output is a file, an error
    * will be returned.
    */
-  def commit(context: MrContext, mapping: Option[Component] => HdfsPath, cleanup: Boolean): Hdfs[Unit] = for {
+  def commit(context: MrContext, mapping: Component => HdfsPath, cleanup: Boolean): Hdfs[Unit] = for {
     g <- context.output.globPaths("*")
     h =  HdfsPath.filterHidden(g)
     _ <- h.traverse(p => for {
-      n <- Hdfs.ok(mapping(p.basename))
+      n <- Hdfs.fromOption(p.basename, s"Output is a top level dir, can't commit").map(mapping)
       e <- n.exists
       l <- if (e) n.globPaths("*")
            else   nil.pure[Hdfs]
