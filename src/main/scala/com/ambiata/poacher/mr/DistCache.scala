@@ -3,6 +3,7 @@ package com.ambiata.poacher.mr
 import com.ambiata.poacher.Compatibility
 import com.ambiata.poacher.hdfs._
 import com.ambiata.mundane.control._
+import com.ambiata.mundane.io._
 
 import java.net.URI
 
@@ -46,12 +47,12 @@ case class DistCache(base: HdfsPath, contextId: ContextId) {
      _hard_ if anything goes wrong. */
   def pop[A](conf: Configuration, key: DistCache.Key, f: Array[Byte] => String \/ A): A = {
     val nskey = key.namespaced(contextId.value)
-    val p = HdfsPath.fromString(Compatibility.findCacheFile(conf, nskey))
+    val p = LocalPath.fromString(Compatibility.findCacheFile(conf, nskey))
     (for {
       d <- p.readBytes
-      z <- Hdfs.fromOption(d, s"$p was empty.")
-      r <- Hdfs.safe(f(z))
-    } yield r).run(conf).unsafePerformIO match {
+      z <- RIO.fromOption(d, s"$p was empty.")
+      r <- RIO.safe(f(z))
+    } yield r).unsafePerformIO match {
       case Ok(\/-(a)) =>
         a
       case Ok(-\/(s)) =>
