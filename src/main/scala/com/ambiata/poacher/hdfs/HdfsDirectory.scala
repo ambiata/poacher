@@ -68,6 +68,7 @@ class HdfsDirectory private (val path: Path) extends AnyVal {
       case Some(_) =>
         doesExist(s"Source directory does not exists. HdfsDirectory($path)",
           destination.doesNotExist(s"A file/directory exists in the target location $destination. Can not move source directory HdfsDirectory($path).", for {
+            _ <- destination.dirname.mkdirs // this will only happen as part of the rename below in local mode
             s <- Hdfs.filesystem
             d <- Hdfs.safe({
               // Evil. Unfortunate moving dirs to dirs in HDFS is (intentionally) broken in local mode
