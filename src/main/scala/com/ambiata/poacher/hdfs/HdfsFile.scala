@@ -172,6 +172,7 @@ class HdfsFile private (val path: Path) extends AnyVal {
     doesExist(s"Source file does not exist. HdfsFile($path)",
       destination.doesNotExist(s"A file/directory exists in target location $destination. Can not move source file HdfsFile($path)",
         for {
+          _ <- destination.dirname.mkdirs // this will only happen as part of the rename below in local mode
           m <- withFileSystem(_.rename(toHPath, destination.toHPath))
           _ <- Hdfs.unless(m)(Hdfs.fail(s"Failed to move HdfsFile($path) to HdfsFile($destination)"))
         } yield HdfsFile.unsafe(destination.path.path)))
